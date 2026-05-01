@@ -580,7 +580,7 @@ function PhotoQuizTab() {
       </div>
 
       <label style={{ display: 'block', cursor: 'pointer', marginBottom: 14 }}>
-        <input type="file" accept="image/*" capture="environment" onChange={pickPhoto} style={{ display: 'none' }}/>
+        <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }}/>
         {photo ? (
           <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--line)' }}>
             <img src={photo} alt="" style={{ width: '100%', display: 'block', maxHeight: 300, objectFit: 'cover' }}/>
@@ -609,7 +609,7 @@ function PhotoQuizTab() {
       )}
 
       <div style={{ fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--ink-faint)', marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
-        Cette fonction utilise <strong>Gemini</strong> (lecture d'image).
+        Cette fonction utilise <strong>Groq</strong> (lecture d'image).
       </div>
     </div>
   );
