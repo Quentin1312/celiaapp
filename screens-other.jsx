@@ -312,10 +312,42 @@ function CapTips() {
 function ProfileScreen({ profile, setProfile, recipes, onResetSeed }) {
   const [name, setName] = uS3(profile.name);
   const [level, setLevel] = uS3(profile.level);
+  const [photo, setPhoto] = uS3(profile.photo || '');
+  const [hoverAvatar, setHoverAvatar] = uS3(false);
   const Illu = window.Illu;
 
+  function pickPhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSize = 400;
+        const r = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = img.width * r; c.height = img.height * r;
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        const dataUrl = c.toDataURL('image/jpeg', 0.88);
+        setPhoto(dataUrl);
+        const p = { name: name.trim() || 'Apprentie', level: level.trim() || 'CAP', photo: dataUrl };
+        setProfile(p);
+        window.Storage.saveProfile(p);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removePhoto() {
+    setPhoto('');
+    const p = { name: name.trim() || 'Apprentie', level: level.trim() || 'CAP', photo: '' };
+    setProfile(p);
+    window.Storage.saveProfile(p);
+  }
+
   function save() {
-    const p = { name: name.trim() || 'Apprentie', level: level.trim() || 'CAP' };
+    const p = { name: name.trim() || 'Apprentie', level: level.trim() || 'CAP', photo: photo || '' };
     setProfile(p);
     window.Storage.saveProfile(p);
   }
@@ -326,12 +358,65 @@ function ProfileScreen({ profile, setProfile, recipes, onResetSeed }) {
         <span className="watercolor">Profil</span>
       </div>
 
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom: 18, gap: 8 }}>
-        <div style={{ width: 110, height: 110, borderRadius: '50%', background:'var(--rose-pale)', display:'grid', placeItems:'center', border: '3px dashed var(--rose-deep)' }}>
-          <Illu.CakeSlice size={70}/>
-        </div>
-        <div style={{ fontFamily:'var(--font-script)', fontSize: 30, fontWeight: 600 }}>{profile.name}</div>
-        <div style={{ fontFamily:'var(--font-hand)', fontSize: 17, color:'var(--ink-soft)' }}>{profile.level}</div>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom: 18, gap: 10 }}>
+
+        {/* Avatar uploadable */}
+        <label style={{ cursor:'pointer', position:'relative', display:'block' }}
+               onMouseEnter={() => setHoverAvatar(true)}
+               onMouseLeave={() => setHoverAvatar(false)}>
+          <input type="file" accept="image/*" onChange={pickPhoto} style={{ display:'none' }}/>
+          <div style={{
+            width: 112, height: 112, borderRadius: '50%',
+            overflow: 'hidden',
+            border: photo ? '3px solid var(--rose-deep)' : '3px dashed var(--rose-deep)',
+            background: photo ? 'transparent' : 'var(--rose-pale)',
+            display: 'grid', placeItems: 'center',
+            boxShadow: '0 4px 16px rgba(191,86,86,.2)',
+            transition: 'box-shadow .2s',
+          }}>
+            {photo ? (
+              <img src={photo} alt="Avatar"
+                style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+            ) : (
+              <div style={{ textAlign:'center', padding: 8 }}>
+                <div style={{ display:'flex', justifyContent:'center', color:'var(--rose-deep)', marginBottom: 4 }}>
+                  {Icon.camera}
+                </div>
+                <div style={{ fontFamily:'var(--font-hand)', fontSize:12, color:'var(--rose-deep)', lineHeight:1.3 }}>
+                  Ajouter<br/>ma photo
+                </div>
+              </div>
+            )}
+
+            {/* Overlay au survol si photo */}
+            {photo && (
+              <div style={{
+                position:'absolute', inset:0, borderRadius:'50%',
+                background:'rgba(58,42,31,.45)',
+                display:'grid', placeItems:'center',
+                opacity: hoverAvatar ? 1 : 0,
+                transition: 'opacity .2s',
+                color: 'white',
+              }}>
+                {Icon.camera}
+              </div>
+            )}
+          </div>
+        </label>
+
+        {/* Supprimer la photo */}
+        {photo && (
+          <button onClick={removePhoto} style={{
+            background:'none', border:'none', cursor:'pointer',
+            fontFamily:'var(--font-body)', fontSize:12, color:'var(--ink-faint)',
+            fontWeight:600, padding:'2px 8px',
+          }}>
+            Supprimer la photo
+          </button>
+        )}
+
+        <div style={{ fontFamily:'var(--font-script)', fontSize:30, fontWeight:700, textAlign:'center' }}>{profile.name}</div>
+        <div style={{ fontFamily:'var(--font-hand)', fontSize:17, color:'var(--ink-soft)' }}>{profile.level}</div>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
