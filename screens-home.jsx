@@ -21,7 +21,7 @@ function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, profile }) {
       <div style={{ marginTop: 6, marginBottom: 18 }}>
         <div style={{ fontFamily: 'var(--font-hand)', fontSize: 17, color: 'var(--ink-soft)' }}>{greeting},</div>
         <div style={{ fontFamily: 'var(--font-script)', fontSize: 38, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.1 }}>
-          {profile.name.split(' ')[0]} 🌸
+          {profile.name.split(' ')[0]}
         </div>
       </div>
 
