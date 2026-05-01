@@ -18,8 +18,9 @@ const Storage = {
   },
   loadProfile() {
     try {
-      return JSON.parse(localStorage.getItem(PROFILE_KEY)) || { name: 'Célia', level: 'CAP 1ère année' };
-    } catch (e) { return { name: 'Célia', level: 'CAP 1ère année' }; }
+      const p = JSON.parse(localStorage.getItem(PROFILE_KEY));
+      return p ? { photo: '', ...p } : { name: 'Célia', level: 'CAP 1ère année', photo: '' };
+    } catch (e) { return { name: 'Célia', level: 'CAP 1ère année', photo: '' }; }
   },
   saveProfile(p) { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); },
 
@@ -202,7 +203,7 @@ Réponds UNIQUEMENT en JSON valide :
   },
 
   async photoQuiz(imageDataUrl) {
-    const prompt = `Tu es formateur en CAP Pâtisserie. Analyse cette photo de fiche de cours / recette / document pédagogique de pâtisserie et génère un quiz de 5 questions à choix multiples (4 options chacune) basé UNIQUEMENT sur le contenu visible dans l'image. Les questions doivent tester la compréhension : techniques, températures, proportions, vocabulaire technique présents dans le document.
+    const prompt = `Tu es formateur en CAP Pâtisserie. Analyse cette photo de fiche de cours / recette / document pédagogique de pâtisserie et génère un quiz de 10 questions à choix multiples (4 options chacune) basé UNIQUEMENT sur le contenu visible dans l'image. Les questions doivent tester la compréhension : techniques, températures, proportions, vocabulaire technique présents dans le document. Varie les types de questions (définitions, températures, étapes, matériel, proportions).
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant ni après :
 {
@@ -211,7 +212,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ni après :
     { "q": "Question ?", "a": ["option A", "option B", "option C", "option D"], "correct": 0 }
   ]
 }
-"correct" est l'index (0 à 3) de la bonne réponse. Génère exactement 5 questions.`;
+"correct" est l'index (0 à 3) de la bonne réponse. Génère exactement 10 questions.`;
     const text = await callAI(prompt, imageDataUrl);
     return parseJSON(text);
   },
