@@ -130,7 +130,7 @@ function QuizPlayer({ questions, title, onExit }) {
 
   if (done) {
     const pct = Math.round((score / questions.length) * 100);
-    const msg = pct >= 80 ? '🌟 Excellent, tu maîtrises !' : pct >= 60 ? '👍 Bon, continue à réviser !' : '📚 À retravailler — courage !';
+    const msg = pct >= 80 ? 'Excellent, tu maîtrises !' : pct >= 60 ? 'Bon, continue à réviser !' : 'À retravailler — courage !';
     return (
       <div className="card pop" style={{ textAlign: 'center', padding: 24 }}>
         {title && <div style={{ fontFamily: 'var(--font-script)', fontSize: 22, color: 'var(--ink-soft)', marginBottom: 8 }}>{title}</div>}
@@ -464,7 +464,7 @@ function TemperaturesTab() {
         </div>
       ))}
       <div style={{ fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--ink-faint)', textAlign: 'center', padding: '4px 0 8px' }}>
-        💡 Astuce : ces températures sont à connaître par cœur pour le CAP.
+        Astuce : ces températures sont à connaître par cœur pour le CAP.
       </div>
     </div>
   );
@@ -557,7 +557,7 @@ function PhotoQuizTab() {
             <img src={pending.thumb} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--line)', marginBottom: 12 }}/>
           )}
           <button className="btn btn-primary" onClick={saveAndPlay} style={{ width: '100%' }}>
-            💾 Sauvegarder et commencer
+            {Icon.save} Sauvegarder et commencer
           </button>
           <button className="btn btn-ghost" onClick={discardAndPlay} style={{ width: '100%', marginTop: 8 }}>
             Jouer sans sauvegarder
@@ -589,7 +589,7 @@ function PhotoQuizTab() {
           </div>
         ) : (
           <div style={{ border: '2px dashed var(--rose-deep)', borderRadius: 18, padding: 36, textAlign: 'center', background: 'rgba(255,255,255,.4)' }}>
-            <div style={{ fontSize: 42 }}>📷</div>
+            <div style={{ display:'flex', justifyContent:'center', color:'var(--ink-faint)' }}>{Icon.camera}</div>
             <div style={{ fontFamily: 'var(--font-script)', fontSize: 22, fontWeight: 600, color: 'var(--ink)', marginTop: 6 }}>Choisir / prendre une photo</div>
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink-faint)', marginTop: 4 }}>fiche, recette, document de cours</div>
           </div>
@@ -650,7 +650,7 @@ function MyQuizTab() {
   if (!quizzes.length) {
     return (
       <div className="card pop" style={{ textAlign: 'center', padding: 28 }}>
-        <div style={{ fontSize: 42 }}>📚</div>
+        <div style={{ display:'flex', justifyContent:'center', color:'var(--ink-faint)' }}>{Icon.book}</div>
         <div style={{ fontFamily: 'var(--font-script)', fontSize: 24, fontWeight: 600, marginTop: 8 }}>Aucun quiz sauvegardé</div>
         <div style={{ fontFamily: 'var(--font-hand)', fontSize: 16, color: 'var(--ink-soft)', marginTop: 8, lineHeight: 1.4 }}>
           Va dans l'onglet <strong>Photo</strong>,<br/>prends en photo ta fiche de cours,<br/>l'IA générera un quiz que tu pourras sauvegarder ici.
