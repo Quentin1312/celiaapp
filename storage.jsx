@@ -121,53 +121,43 @@ const SEED_RECIPES = [
 const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 'Biscuits', 'Pâtes de base'];
 
 /* ---------------- AI ----------------
-   Pour utiliser Gemini : mets ta clé API ici
-   Récupère-la gratuitement sur https://aistudio.google.com/apikey
-   (1500 requêtes/jour gratuites, modèle gemini-2.0-flash)
-   Si la clé est vide ou invalide, l'app retombe automatiquement
-   sur window.claude.complete (Claude Haiku, intégré ici). */
-const GEMINI_API_KEY = 'AIzaSyBYpb4fzAZ2Uy4I983ZySqm9tR5Mr1tY3Q';
-const GEMINI_MODEL = 'gemini-2.0-flash';
+   Clé Groq gratuite sur https://console.groq.com
+   14 400 requêtes/jour gratuites */
+const GROQ_API_KEY = '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';
+const GROQ_MODEL_TEXT  = 'llama-3.3-70b-versatile';
+const GROQ_MODEL_VISION = 'llama-3.2-11b-vision-preview';
 
-async function callGemini(prompt, imageDataUrl) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-  const parts = [{ text: prompt }];
-  if (imageDataUrl) {
-    const m = imageDataUrl.match(/^data:(.+?);base64,(.+)$/);
-    if (m) parts.push({ inlineData: { mimeType: m[1], data: m[2] } });
-  }
-  const res = await fetch(url, {
+async function callGroq(prompt, imageDataUrl) {
+  const model = imageDataUrl ? GROQ_MODEL_VISION : GROQ_MODEL_TEXT;
+  const content = imageDataUrl
+    ? [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: imageDataUrl } }]
+    : prompt;
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
     body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: 0.85, topP: 0.95, maxOutputTokens: 2000,
-      },
+      model,
+      messages: [{ role: 'user', content }],
+      temperature: 0.85,
+      max_tokens: 2000,
     }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error('Gemini ' + res.status + ' — ' + (err?.error?.message || ''));
+    throw new Error('Groq ' + res.status + ' — ' + (err?.error?.message || ''));
   }
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error('Réponse vide');
   return text;
 }
 
 async function callAI(prompt, imageDataUrl) {
-  if (GEMINI_API_KEY && GEMINI_API_KEY.length > 10) {
-    try { return await callGemini(prompt, imageDataUrl); }
-    catch (e) { console.warn('Gemini failed, fallback Claude:', e); }
+  if (GROQ_API_KEY && GROQ_API_KEY.length > 10 && !GROQ_API_KEY.startsWith('COLLE')) {
+    try { return await callGroq(prompt, imageDataUrl); }
+    catch (e) { console.warn('Groq failed:', e); throw e; }
   }
-  if (imageDataUrl && (!window.claude || !window.claude.complete)) {
-    throw new Error('La lecture de photo nécessite une clé Gemini');
-  }
-  if (window.claude && window.claude.complete) {
-    return await window.claude.complete(prompt);
-  }
-  throw new Error('Aucune IA disponible');
+  throw new Error('Configure ta clé Groq dans storage.jsx');
 }
 
 const AI = {
