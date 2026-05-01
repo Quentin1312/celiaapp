@@ -127,7 +127,7 @@ const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 
    Si la clé est vide ou invalide, l'app retombe automatiquement
    sur window.claude.complete (Claude Haiku, intégré ici). */
 const GEMINI_API_KEY = 'AIzaSyBIQPbruMay8NP0z5S-BdA_ZFVnjd2ij3g';
-const GEMINI_MODEL = 'gemini-1.5-pro-002';
+const GEMINI_MODEL = 'gemini-1.5-flash';
 
 async function callGemini(prompt, imageDataUrl) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
