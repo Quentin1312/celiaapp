@@ -125,7 +125,7 @@ const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 
    14 400 requêtes/jour gratuites */
 const GROQ_API_KEY = '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';
 const GROQ_MODEL_TEXT  = 'llama-3.3-70b-versatile';
-const GROQ_MODEL_VISION = 'llama-3.2-11b-vision-preview';
+const GROQ_MODEL_VISION = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 async function callGroq(prompt, imageDataUrl) {
   const model = imageDataUrl ? GROQ_MODEL_VISION : GROQ_MODEL_TEXT;
