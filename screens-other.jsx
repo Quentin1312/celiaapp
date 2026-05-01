@@ -169,7 +169,7 @@ function Timers({ onBack }) {
         {timers.map(t => (
           <div key={t.id} className={`timer ${t.ringing ? 'ringing' : ''}`}>
             <div className="digits">{fmt(t.remain)}</div>
-            <div className="name">{t.name}{t.ringing && ' 🔔'}</div>
+            <div className="name" style={{ display:'flex', alignItems:'center', gap: 6 }}>{t.name}{t.ringing && <span style={{color:'var(--rose-deep)', display:'flex'}}>{Icon.bell}</span>}</div>
             <button className="back" onClick={() => toggle(t.id)} style={{ color: t.running ? 'var(--rose-deep)' : 'var(--mint-deep)' }}>
               {t.running ? Icon.pause : Icon.play}
             </button>
