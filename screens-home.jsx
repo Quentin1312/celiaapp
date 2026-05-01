@@ -18,22 +18,62 @@ function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, profile }) {
 
   return (
     <div className="screen pop">
-      <div style={{ marginTop: 6, marginBottom: 18 }}>
-        <div style={{ fontFamily: 'var(--font-hand)', fontSize: 17, color: 'var(--ink-soft)' }}>{greeting},</div>
-        <div style={{ fontFamily: 'var(--font-script)', fontSize: 38, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.1 }}>
+
+      {/* ── Hero banner ── */}
+      <div style={{
+        margin: '-18px -18px 22px',
+        background: 'linear-gradient(145deg, var(--rose-pale) 0%, #fdf4e8 45%, var(--mint-pale) 100%)',
+        padding: '28px 22px 26px',
+        position: 'relative',
+        overflow: 'hidden',
+        borderBottom: '1px solid var(--line-soft)',
+      }}>
+        {/* Illus décoratives en fond */}
+        <div style={{ position:'absolute', top:-10, right:-10, opacity:0.2, transform:'rotate(22deg)' }}>
+          <Illu.Croissant size={100}/>
+        </div>
+        <div style={{ position:'absolute', bottom:-16, right:52, opacity:0.14, transform:'rotate(-6deg)' }}>
+          <Illu.CakeSlice size={110}/>
+        </div>
+        <div style={{ position:'absolute', top:14, right:104, opacity:0.5 }}>
+          <Illu.Star size={16} fill="var(--gold)"/>
+        </div>
+        <div style={{ position:'absolute', top:44, right:28, opacity:0.35 }}>
+          <Illu.Star size={10} fill="var(--rose-deep)"/>
+        </div>
+        <div style={{ position:'absolute', bottom:14, right:24, opacity:0.25 }}>
+          <Illu.Star size={13} fill="var(--mint-deep)"/>
+        </div>
+
+        {/* Contenu texte */}
+        <div style={{ fontFamily:'var(--font-hand)', fontSize:16, color:'var(--ink-soft)', marginBottom:2 }}>
+          {greeting} 👋
+        </div>
+        <div style={{ fontFamily:'var(--font-script)', fontSize:50, fontWeight:700, color:'var(--ink)', lineHeight:1, marginBottom:12 }}>
           {profile.name.split(' ')[0]}
+        </div>
+        <div style={{
+          display:'inline-flex', alignItems:'center', gap:6,
+          background:'rgba(255,255,255,.65)',
+          borderRadius:999, padding:'5px 14px',
+          border:'1px solid rgba(191,86,86,.2)',
+          backdropFilter:'blur(6px)',
+        }}>
+          <span style={{ fontFamily:'var(--font-hand)', fontSize:14, color:'var(--rose-deep)' }}>
+            ✨ Mon carnet de pâtisserie
+          </span>
         </div>
       </div>
 
       {/* Quick stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-        <div className="card tilt-l" style={{ padding: 14 }}>
-          <div style={{ fontFamily: 'var(--font-script)', fontSize: 36, fontWeight: 700, color: 'var(--rose-deep)', lineHeight: 1 }}>{recipes.length}</div>
-          <div style={{ fontFamily: 'var(--font-hand)', fontSize: 15, color: 'var(--ink-soft)' }}>recettes au carnet</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
+        <div className="card tilt-l" style={{ padding: 16, background:'linear-gradient(135deg, var(--rose-pale), var(--paper))' }}>
+          <div style={{ fontFamily:'var(--font-script)', fontSize:44, fontWeight:700, color:'var(--rose-deep)', lineHeight:1 }}>{recipes.length}</div>
+          <div style={{ fontFamily:'var(--font-hand)', fontSize:15, color:'var(--ink-soft)', marginTop:2 }}>recettes au carnet</div>
         </div>
-        <div className="card tilt-r" style={{ padding: 14 }}>
-          <div style={{ fontFamily: 'var(--font-script)', fontSize: 36, fontWeight: 700, color: 'var(--mint-deep)', lineHeight: 1 }}>{favs}</div>
-          <div style={{ fontFamily: 'var(--font-hand)', fontSize: 15, color: 'var(--ink-soft)' }}>favorites</div>
+        <div className="card tilt-r" style={{ padding: 16, background:'linear-gradient(135deg, var(--mint-pale), var(--paper))' }}>
+          <div style={{ fontFamily:'var(--font-script)', fontSize:44, fontWeight:700, color:'var(--mint-deep)', lineHeight:1 }}>{favs}</div>
+          <div style={{ fontFamily:'var(--font-hand)', fontSize:15, color:'var(--ink-soft)', marginTop:2 }}>favorites ♡</div>
         </div>
       </div>
 
@@ -42,24 +82,26 @@ function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, profile }) {
         onClick={openChefFridge}
         style={{
           width:'100%', textAlign:'left', border:'none', cursor:'pointer',
-          background:'linear-gradient(135deg, var(--mint-pale), var(--rose-pale))',
-          borderRadius: 18, padding: '16px 18px', marginBottom: 16,
-          boxShadow: 'var(--shadow-card)', display:'flex', alignItems:'center', gap:14
+          background:'linear-gradient(130deg, var(--mint-pale) 0%, #fdf4e8 55%, var(--rose-pale) 100%)',
+          borderRadius: 20, padding: '20px 20px', marginBottom: 18,
+          boxShadow: '0 1px 0 rgba(255,255,255,.9) inset, 0 4px 18px rgba(58,42,31,.10)',
+          display:'flex', alignItems:'center', gap:16,
+          outline: '1px solid var(--line-soft)',
         }}>
-        <div className="wiggle" style={{flexShrink:0}}><Illu.WhiskBowl size={64}/></div>
+        <div className="wiggle" style={{flexShrink:0}}><Illu.WhiskBowl size={76}/></div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: 'var(--font-script)', fontSize: 26, fontWeight: 700, color: 'var(--ink)', lineHeight: 1 }}>Chef Frigo</div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink-soft)', marginTop: 4 }}>
-            Une recette à partir de ce que tu as ✨
+          <div style={{ fontFamily:'var(--font-script)', fontSize:30, fontWeight:700, color:'var(--ink)', lineHeight:1 }}>Chef Frigo</div>
+          <div style={{ fontFamily:'var(--font-hand)', fontSize:15, color:'var(--ink-soft)', marginTop:6, lineHeight:1.35 }}>
+            Une recette avec ce que tu as<br/>dans ton frigo
           </div>
         </div>
-        <div style={{ color: 'var(--rose-deep)' }}>{Icon.sparkles}</div>
+        <div style={{ color:'var(--rose-deep)', flexShrink:0 }}>{Icon.sparkles}</div>
       </button>
 
       {/* Recents */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom: 8 }}>
-        <span className="hand-underline" style={{ fontSize: 24 }}>Récents</span>
-        <button onClick={() => setTab('recipes')} style={{ background: 'none', border: 'none', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--rose-deep)', cursor: 'pointer' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom: 10 }}>
+        <span className="hand-underline" style={{ fontSize: 26 }}>Récents</span>
+        <button onClick={() => setTab('recipes')} style={{ background:'none', border:'none', fontFamily:'var(--font-script)', fontSize:18, fontWeight:600, color:'var(--rose-deep)', cursor:'pointer', letterSpacing:'.2px' }}>
           tout voir →
         </button>
       </div>
@@ -79,36 +121,54 @@ function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, profile }) {
 /* -------- RECIPE CARD (list item) -------- */
 function RecipeCard({ recipe, onClick }) {
   const Illu = window.Illu;
+  const accentColor = recipe.category === 'Viennoiserie' ? 'var(--cream-deep)'
+    : recipe.category === 'Entremets' ? 'var(--rose-deep)'
+    : recipe.category === 'Crèmes' ? 'var(--gold)'
+    : 'var(--mint-deep)';
+
   return (
     <button onClick={onClick} className="card pop" style={{
       textAlign:'left', border:'none', cursor:'pointer',
-      display:'flex', alignItems:'center', gap: 14, padding: 12, width: '100%'
+      display:'flex', alignItems:'center', gap: 14, padding: 10, width: '100%',
+      overflow: 'hidden',
     }}>
+      {/* Barre accent catégorie */}
       <div style={{
-        width: 70, height: 70, borderRadius: 14,
+        position:'absolute', left:0, top:10, bottom:10, width:4,
+        background: accentColor, borderRadius:'0 4px 4px 0', opacity:0.75,
+      }}/>
+
+      {/* Photo / illustration */}
+      <div style={{
+        width: 88, height: 88, borderRadius: 16,
         background: 'var(--paper-warm)',
         display:'grid', placeItems:'center', flexShrink:0,
         border: '1px solid var(--line-soft)',
-        overflow: 'hidden',
+        overflow: 'hidden', marginLeft: 8,
         backgroundImage: recipe.photo ? `url(${recipe.photo})` : undefined,
         backgroundSize: 'cover', backgroundPosition: 'center',
+        boxShadow: '0 2px 8px rgba(58,42,31,.08)',
       }}>
-        {!recipe.photo && <Illu.ByCategory category={recipe.category} size={48}/>}
+        {!recipe.photo && <Illu.ByCategory category={recipe.category} size={58}/>}
       </div>
+
+      {/* Infos */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-script)', fontSize: 22, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+        <div style={{ fontFamily:'var(--font-script)', fontSize:23, fontWeight:700, color:'var(--ink)', lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
           {recipe.title}
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap: 6, marginTop: 4, flexWrap:'wrap' }}>
-          <span className={`sticker ${recipe.category === 'Entremets' ? '' : recipe.category === 'Viennoiserie' ? 'cream' : 'mint'}`} style={{ fontSize: 13, padding: '1px 8px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:5, flexWrap:'wrap' }}>
+          <span className={`sticker ${recipe.category === 'Entremets' ? '' : recipe.category === 'Viennoiserie' ? 'cream' : 'mint'}`} style={{ fontSize:12, padding:'2px 9px' }}>
             {recipe.category}
           </span>
-          {recipe.aiRefined && <span style={{ fontSize: 11, fontFamily:'var(--font-body)', fontWeight:600, color:'var(--mint-deep)' }}>✨ pro</span>}
+          {recipe.aiRefined && <span style={{ fontSize:11, fontFamily:'var(--font-body)', fontWeight:700, color:'var(--mint-deep)' }}>✨ pro</span>}
         </div>
-        <div style={{ fontFamily:'var(--font-body)', fontSize: 12, color:'var(--ink-faint)', marginTop: 4 }}>
+        <div style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--ink-faint)', marginTop:5 }}>
           {recipe.ingredients.length} ingrédients · {recipe.steps.length} étapes
         </div>
       </div>
+
+      {/* Favori */}
       <div style={{ color: recipe.favorite ? 'var(--rose-deep)' : 'var(--ink-faint)', flexShrink:0 }}>
         {recipe.favorite ? Icon.heart : Icon.heartO}
       </div>
