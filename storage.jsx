@@ -126,7 +126,7 @@ const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 
    (1500 requêtes/jour gratuites, modèle gemini-2.0-flash)
    Si la clé est vide ou invalide, l'app retombe automatiquement
    sur window.claude.complete (Claude Haiku, intégré ici). */
-const GEMINI_API_KEY = 'AIzaSyBIQPbruMay8NP0z5S-BdA_ZFVnjd2ij3g';
+const GEMINI_API_KEY = 'AIzaSyBYpb4fzAZ2Uy4I983ZySqm9tR5Mr1tY3Q';
 const GEMINI_MODEL = 'gemini-2.0-flash';
 
 async function callGemini(prompt, imageDataUrl) {
