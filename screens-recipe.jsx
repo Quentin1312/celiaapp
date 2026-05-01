@@ -187,7 +187,7 @@ function RecipeEditor({ recipe, onCancel, onSave }) {
             </div>
           ) : (
             <div style={{ border:'2px dashed var(--line)', borderRadius: 14, padding: 24, textAlign:'center', background:'rgba(255,255,255,.4)' }}>
-              <div style={{ fontFamily:'var(--font-hand)', fontSize: 17, color:'var(--ink-soft)' }}>📷 Choisir une photo</div>
+              <div style={{ fontFamily:'var(--font-hand)', fontSize: 17, color:'var(--ink-soft)', display:'flex', alignItems:'center', justifyContent:'center', gap: 8 }}>{Icon.camera} Choisir une photo</div>
               <div style={{ fontFamily:'var(--font-body)', fontSize: 12, color:'var(--ink-faint)', marginTop: 4 }}>de ta recette</div>
             </div>
           )}
