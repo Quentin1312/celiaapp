@@ -2,6 +2,12 @@
 
 const { useState: uSA, useEffect: uEA } = React;
 
+const THEME_KEY = 'patisserie.theme.v1';
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "palette": "default",
+  "fonts": "dm-inter"
+}/*EDITMODE-END*/;
+
 function App() {
   const [tab, setTab] = uSA('home');
   const [recipes, setRecipes] = uSA(() => window.Storage.load() || window.SEED_RECIPES);
@@ -13,18 +19,23 @@ function App() {
 
   const toast = (m) => setToastMsg(m);
 
-  // Tweaks
-  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-    "palette": "default",
-    "paperTexture": "normal",
-    "cardStyle": "soft"
-  }/*EDITMODE-END*/;
-  const [tweaks, setTweak] = window.useTweaks ? window.useTweaks(TWEAK_DEFAULTS) : [TWEAK_DEFAULTS, () => {}];
+  // Tweaks avec persistance localStorage
+  const tweakInit = (() => {
+    try { return { ...TWEAK_DEFAULTS, ...JSON.parse(localStorage.getItem(THEME_KEY)) }; }
+    catch(e) { return TWEAK_DEFAULTS; }
+  })();
+  const [tweaks, _setTweak] = window.useTweaks ? window.useTweaks(tweakInit) : [tweakInit, () => {}];
+  const setTweak = (key, val) => {
+    _setTweak(key, val);
+    try {
+      const cur = JSON.parse(localStorage.getItem(THEME_KEY)) || {};
+      localStorage.setItem(THEME_KEY, JSON.stringify({ ...cur, [key]: val }));
+    } catch(e) {}
+  };
 
   uEA(() => {
     document.documentElement.dataset.palette = tweaks.palette === 'default' ? '' : tweaks.palette;
-    document.documentElement.dataset.paper = tweaks.paperTexture;
-    document.documentElement.dataset.card = tweaks.cardStyle;
+    document.documentElement.dataset.fonts = tweaks.fonts || 'dm-inter';
   }, [tweaks]);
 
   function openRecipe(r) { setView({ kind: 'recipe', id: r.id }); }
@@ -115,31 +126,32 @@ function App() {
       {tab === 'recipes' && <window.RecipesScreen recipes={recipes} openRecipe={openRecipe} openEditor={openEditor}/>}
       {tab === 'tools' && <window.ToolsScreen/>}
       {tab === 'cap' && <window.RevisionsScreen/>}
-      {tab === 'profile' && <window.ProfileScreen profile={profile} setProfile={setProfile} recipes={recipes} onResetSeed={resetSeed}/>}
+      {tab === 'profile' && <window.ProfileScreen profile={profile} setProfile={setProfile} recipes={recipes} onResetSeed={resetSeed} tweaks={tweaks} setTweak={setTweak}/>}
       <window.BottomNav tab={tab} setTab={setTab}/>
       {toastMsg && <window.Toast msg={toastMsg} onDone={() => setToastMsg(null)}/>}
 
       {window.TweaksPanel && (
         <window.TweaksPanel title="Tweaks">
           <window.TweakSection label="Palette">
-            <window.TweakRadio
+            <window.TweakSelect
               value={tweaks.palette}
               onChange={(v) => setTweak('palette', v)}
               options={[
-                { value: 'default', label: 'Rose & menthe' },
-                { value: 'warm', label: 'Vanille' },
-                { value: 'fresh', label: 'Sauge' },
+                { value: 'default', label: 'Crème & encre' },
+                { value: 'sauge', label: 'Sauge & cuivre' },
+                { value: 'rose', label: 'Rose poudré' },
+                { value: 'charbon', label: 'Charbon & or (sombre)' },
               ]}
             />
           </window.TweakSection>
-          <window.TweakSection label="Texture papier">
-            <window.TweakRadio
-              value={tweaks.paperTexture}
-              onChange={(v) => setTweak('paperTexture', v)}
+          <window.TweakSection label="Pairing typographique">
+            <window.TweakSelect
+              value={tweaks.fonts}
+              onChange={(v) => setTweak('fonts', v)}
               options={[
-                { value: 'subtle', label: 'Discrète' },
-                { value: 'normal', label: 'Normale' },
-                { value: 'strong', label: 'Marquée' },
+                { value: 'dm-inter', label: 'DM Serif + Inter' },
+                { value: 'fraunces', label: 'Fraunces + Inter' },
+                { value: 'instrument', label: 'Instrument + Inter' },
               ]}
             />
           </window.TweakSection>
