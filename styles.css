@@ -630,6 +630,54 @@ ol.steps li::before {
 /* tweaks panel positioning override */
 [data-edit-panel] { z-index: 200; }
 
+/* ── Chat (Chef Classique) ── */
+.chat-bubble {
+  max-width: 82%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  word-break: break-word;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.chat-bubble-user {
+  background: var(--rose-deep);
+  color: #fff7f3;
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 3px 12px rgba(191,86,86,.35);
+  font-weight: 500;
+}
+.chat-bubble-chef {
+  background: #ffffff;
+  border: 1.5px solid rgba(58,42,31,.12);
+  border-radius: 4px 18px 18px 18px;
+  box-shadow: 0 3px 16px rgba(58,42,31,.10);
+  color: var(--ink);
+}
+.chat-label-chef {
+  font-family: var(--font-hand);
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 3px;
+  margin-left: 2px;
+  display: block;
+}
+.suggestion-chip {
+  background: rgba(255,255,255,.80);
+  border: 1.5px solid rgba(191,86,86,.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, border-color .15s;
+  width: 100%;
+}
+.suggestion-chip:hover { background: var(--rose-pale); border-color: var(--rose-deep); color: var(--rose-deep); }
+
 /* print PDF mode */
 @media print {
   body, html, #root { background: #fff !important; }
