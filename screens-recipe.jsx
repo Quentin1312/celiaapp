@@ -341,6 +341,152 @@ function ChefFridge({ onBack, onSave, toast }) {
   );
 }
 
+/* -------- CHEF CLASSIQUE (chat IA) -------- */
+function ChefChat({ onBack, toast }) {
+  const [messages, setMessages] = useS2([]);
+  const [input, setInput] = useS2('');
+  const [loading, setLoading] = useS2(false);
+  const bottomRef = useR2(null);
+  const textareaRef = useR2(null);
+  const Illu = window.Illu;
+
+  useE2(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  async function send() {
+    const text = input.trim();
+    if (!text || loading) return;
+    const userMsg = { role: 'user', content: text };
+    const nextHistory = [...messages, userMsg];
+    setMessages(nextHistory);
+    setInput('');
+    setLoading(true);
+    try {
+      const reply = await window.AI.chat(nextHistory);
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch (e) {
+      toast('IA indisponible — réessaye');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  }
+
+  function useSuggestion(s) {
+    setInput(s);
+    textareaRef.current?.focus();
+  }
+
+  const suggestions = [
+    "C'est quoi la différence entre sabler et crémer ?",
+    "Comment réussir une pâte à choux ?",
+    "Pourquoi ma génoise retombe-t-elle ?",
+    "À quelle température tempérer le chocolat noir ?",
+    "Quelle est la règle HACCP pour les crèmes ?",
+  ];
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
+
+      {/* TopBar */}
+      <div className="topbar" style={{ paddingTop:14, flexShrink:0 }}>
+        <button className="back" onClick={onBack}>{Icon.back}</button>
+        <div style={{ flex:1 }}>
+          <div style={{ fontFamily:'var(--font-script)', fontSize:26, fontWeight:700, lineHeight:1.1 }}>
+            Chef Classique
+          </div>
+          <div style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--ink-soft)', fontWeight:600 }}>
+            Questions pâtisserie ✨
+          </div>
+        </div>
+        <div style={{ flexShrink:0, opacity:.8 }}><Illu.WhiskBowl size={42}/></div>
+      </div>
+
+      {/* Zone messages */}
+      <div style={{ flex:1, overflowY:'auto', padding:'8px 16px 16px', display:'flex', flexDirection:'column', gap:10 }}>
+
+        {/* Message d'accueil */}
+        <div style={{ display:'flex', justifyContent:'flex-start' }}>
+          <div className="chat-bubble chat-bubble-chef">
+            <span style={{ fontFamily:'var(--font-hand)', fontSize:17, lineHeight:1.55 }}>
+              Bonjour ! Je suis Chef Ganache 👨‍🍳<br/>
+              Pose-moi toutes tes questions — techniques, recettes, températures, vocabulaire CAP... Je suis là pour t'aider !
+            </span>
+          </div>
+        </div>
+
+        {/* Suggestions (visibles uniquement au début) */}
+        {messages.length === 0 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:7, marginTop:2 }}>
+            {suggestions.map((s, i) => (
+              <button key={i} className="suggestion-chip" onClick={() => useSuggestion(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Messages */}
+        {messages.map((m, i) => (
+          <div key={i} style={{ display:'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div className={`chat-bubble ${m.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-chef'}`}>
+              <span style={{ fontFamily:'var(--font-hand)', fontSize:17, lineHeight:1.55, whiteSpace:'pre-wrap' }}>
+                {m.content}
+              </span>
+            </div>
+          </div>
+        ))}
+
+        {/* Loading */}
+        {loading && (
+          <div style={{ display:'flex', justifyContent:'flex-start' }}>
+            <div className="chat-bubble chat-bubble-chef" style={{ display:'flex', alignItems:'center', gap:8, padding:'14px 18px' }}>
+              <span className="spin" style={{ borderColor:'rgba(58,42,31,.15)', borderTopColor:'var(--ink-soft)', width:18, height:18 }}/>
+              <span style={{ fontFamily:'var(--font-hand)', fontSize:15, color:'var(--ink-soft)' }}>Chef Ganache réfléchit…</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef}/>
+      </div>
+
+      {/* Zone de saisie */}
+      <div style={{
+        flexShrink:0,
+        padding:'10px 14px calc(14px + env(safe-area-inset-bottom))',
+        borderTop:'1px solid var(--line-soft)',
+        background:'rgba(247,239,225,.95)',
+        backdropFilter:'blur(10px)',
+      }}>
+        <div style={{ display:'flex', gap:8, alignItems:'flex-end' }}>
+          <textarea
+            ref={textareaRef}
+            className="textarea"
+            placeholder="Pose ta question à Chef Ganache…"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            rows={1}
+            style={{ flex:1, resize:'none', minHeight:44, maxHeight:120, padding:'10px 14px', fontFamily:'var(--font-hand)', fontSize:16 }}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={send}
+            disabled={loading || !input.trim()}
+            style={{ padding:'10px 16px', flexShrink:0, height:44 }}>
+            {Icon.sparkles}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 window.RecipeDetail = RecipeDetail;
 window.RecipeEditor = RecipeEditor;
 window.ChefFridge = ChefFridge;
+window.ChefChat = ChefChat;
