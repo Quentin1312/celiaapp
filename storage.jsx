@@ -217,6 +217,28 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ni après :
     return parseJSON(text);
   },
 
+  async chat(history) {
+    const system = `Tu es Chef Ganache, un chef pâtissier formateur bienveillant et passionné, spécialisé en CAP Pâtisserie en France. Tu réponds toujours en français avec des explications claires, pratiques et pédagogiques. Utilise le vocabulaire technique pâtissier français (crémer, sabler, tourer, blanchir, pocher, turbiner, etc.) quand c'est pertinent. Sois concis (3-5 phrases maximum) sauf si une explication longue est vraiment nécessaire. Ajoute des astuces concrètes quand c'est utile. Tutoie l'élève.`;
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
+      body: JSON.stringify({
+        model: GROQ_MODEL_TEXT,
+        messages: [{ role: 'system', content: system }, ...history],
+        temperature: 0.75,
+        max_tokens: 700,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error('Groq ' + res.status + ' — ' + (err?.error?.message || ''));
+    }
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text) throw new Error('Réponse vide');
+    return text;
+  },
+
   async generateQuestions(theme, avoidQuestions) {
     const seed = Math.random().toString(36).slice(2, 8);
     const themeMap = {
