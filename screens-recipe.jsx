@@ -407,21 +407,21 @@ function ChefChat({ onBack, toast }) {
       </div>
 
       {/* Zone messages */}
-      <div style={{ flex:1, overflowY:'auto', padding:'8px 16px 16px', display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 20px', display:'flex', flexDirection:'column', gap:4, background:'var(--rose-pale, #fdf4f4)' }}>
 
         {/* Message d'accueil */}
-        <div style={{ display:'flex', justifyContent:'flex-start' }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', marginBottom:6 }}>
+          <span className="chat-label-chef">👨‍🍳 Chef Ganache</span>
           <div className="chat-bubble chat-bubble-chef">
-            <span style={{ fontFamily:'var(--font-hand)', fontSize:17, lineHeight:1.55 }}>
-              Bonjour ! Je suis Chef Ganache 👨‍🍳<br/>
-              Pose-moi toutes tes questions — techniques, recettes, températures, vocabulaire CAP... Je suis là pour t'aider !
-            </span>
+            Bonjour ! Je suis Chef Ganache 👨‍🍳<br/>
+            Pose-moi toutes tes questions — techniques, recettes, températures, vocabulaire CAP... Je suis là pour t'aider !
           </div>
         </div>
 
         {/* Suggestions (visibles uniquement au début) */}
         {messages.length === 0 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:7, marginTop:2 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:7, marginTop:4, marginBottom:8 }}>
+            <span style={{ fontFamily:'var(--font-hand)', fontSize:12, color:'var(--ink-soft)', marginLeft:2 }}>💡 Suggestions</span>
             {suggestions.map((s, i) => (
               <button key={i} className="suggestion-chip" onClick={() => useSuggestion(s)}>
                 {s}
@@ -431,22 +431,35 @@ function ChefChat({ onBack, toast }) {
         )}
 
         {/* Messages */}
-        {messages.map((m, i) => (
-          <div key={i} style={{ display:'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            <div className={`chat-bubble ${m.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-chef'}`}>
-              <span style={{ fontFamily:'var(--font-hand)', fontSize:17, lineHeight:1.55, whiteSpace:'pre-wrap' }}>
+        {messages.map((m, i) => {
+          const isUser = m.role === 'user';
+          const prevRole = i > 0 ? messages[i-1].role : null;
+          const isFirstOfGroup = prevRole !== m.role;
+          return (
+            <div key={i} style={{
+              display:'flex',
+              flexDirection:'column',
+              alignItems: isUser ? 'flex-end' : 'flex-start',
+              marginTop: isFirstOfGroup ? 10 : 3,
+            }}>
+              {!isUser && isFirstOfGroup && (
+                <span className="chat-label-chef">👨‍🍳 Chef Ganache</span>
+              )}
+              <div className={`chat-bubble ${isUser ? 'chat-bubble-user' : 'chat-bubble-chef'}`}
+                style={{ whiteSpace:'pre-wrap' }}>
                 {m.content}
-              </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Loading */}
         {loading && (
-          <div style={{ display:'flex', justifyContent:'flex-start' }}>
-            <div className="chat-bubble chat-bubble-chef" style={{ display:'flex', alignItems:'center', gap:8, padding:'14px 18px' }}>
-              <span className="spin" style={{ borderColor:'rgba(58,42,31,.15)', borderTopColor:'var(--ink-soft)', width:18, height:18 }}/>
-              <span style={{ fontFamily:'var(--font-hand)', fontSize:15, color:'var(--ink-soft)' }}>Chef Ganache réfléchit…</span>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', marginTop:10 }}>
+            <span className="chat-label-chef">👨‍🍳 Chef Ganache</span>
+            <div className="chat-bubble chat-bubble-chef" style={{ display:'flex', alignItems:'center', gap:9, padding:'13px 18px' }}>
+              <span className="spin" style={{ borderColor:'rgba(58,42,31,.15)', borderTopColor:'var(--rose-deep)', width:16, height:16, flexShrink:0 }}/>
+              <span style={{ fontFamily:'var(--font-body)', fontSize:14, color:'var(--ink-soft)' }}>Chef Ganache réfléchit…</span>
             </div>
           </div>
         )}
@@ -459,7 +472,7 @@ function ChefChat({ onBack, toast }) {
         flexShrink:0,
         padding:'10px 14px calc(14px + env(safe-area-inset-bottom))',
         borderTop:'1px solid var(--line-soft)',
-        background:'rgba(247,239,225,.95)',
+        background:'rgba(247,239,225,.97)',
         backdropFilter:'blur(10px)',
       }}>
         <div style={{ display:'flex', gap:8, alignItems:'flex-end' }}>
@@ -471,7 +484,7 @@ function ChefChat({ onBack, toast }) {
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
             rows={1}
-            style={{ flex:1, resize:'none', minHeight:44, maxHeight:120, padding:'10px 14px', fontFamily:'var(--font-hand)', fontSize:16 }}
+            style={{ flex:1, resize:'none', minHeight:44, maxHeight:120, padding:'10px 14px', fontFamily:'var(--font-body)', fontSize:15 }}
           />
           <button
             className="btn btn-primary"
