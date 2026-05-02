@@ -30,6 +30,7 @@ function App() {
   function openRecipe(r) { setView({ kind: 'recipe', id: r.id }); }
   function openEditor(r) { setView({ kind: 'editor', recipe: r }); }
   function openFridge() { setView({ kind: 'fridge' }); }
+  function openChat()  { setView({ kind: 'chat' }); }
   function closeOverlay() { setView({ kind: 'tab' }); }
 
   function saveRecipe(r) {
@@ -99,10 +100,18 @@ function App() {
       </div>
     );
   }
+  if (view.kind === 'chat') {
+    return (
+      <div className="app-shell" style={{ display:'flex', flexDirection:'column' }}>
+        <window.ChefChat onBack={closeOverlay} toast={toast}/>
+        {toastMsg && <window.Toast msg={toastMsg} onDone={() => setToastMsg(null)}/>}
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
-      {tab === 'home' && <window.HomeScreen recipes={recipes} setTab={setTab} openRecipe={openRecipe} openChefFridge={openFridge} profile={profile}/>}
+      {tab === 'home' && <window.HomeScreen recipes={recipes} setTab={setTab} openRecipe={openRecipe} openChefFridge={openFridge} openChefChat={openChat} profile={profile}/>}
       {tab === 'recipes' && <window.RecipesScreen recipes={recipes} openRecipe={openRecipe} openEditor={openEditor}/>}
       {tab === 'tools' && <window.ToolsScreen/>}
       {tab === 'cap' && <window.RevisionsScreen/>}
