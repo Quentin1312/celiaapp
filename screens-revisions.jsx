@@ -1,11 +1,6 @@
 /* ================================================================
-   Module Révisions CAP — 6 onglets:
-   - Quiz   (banque par défaut + IA générées + quiz géant)
-   - Flash  (flashcards recto/verso)
-   - Mes Quiz (quiz photo sauvegardés)
-   - Vocab  (réutilise CapVocab)
-   - T°     (tableau températures)
-   - Photo  (upload photo → IA génère + sauvegarde)
+   Module Révisions CAP — refonte épurée
+   6 onglets: Quiz, Flash, Mes Quiz, Vocab, T°, Photo
    ================================================================ */
 
 const { useState: rS, useEffect: rE, useRef: rR, useMemo: rM } = React;
@@ -105,14 +100,13 @@ function shuffle(arr) {
 }
 
 /* ================================================================
-   QUIZ PLAYER — composant réutilisable
+   QUIZ PLAYER
    ================================================================ */
 function QuizPlayer({ questions, title, onExit }) {
   const [idx, setIdx] = rS(0);
   const [score, setScore] = rS(0);
   const [picked, setPicked] = rS(null);
   const [done, setDone] = rS(false);
-
   const cur = questions[idx];
 
   function pick(i) {
@@ -124,23 +118,24 @@ function QuizPlayer({ questions, title, onExit }) {
     if (idx + 1 >= questions.length) setDone(true);
     else { setIdx(idx + 1); setPicked(null); }
   }
-  function restart() {
-    setIdx(0); setScore(0); setPicked(null); setDone(false);
-  }
+  function restart() { setIdx(0); setScore(0); setPicked(null); setDone(false); }
 
   if (done) {
     const pct = Math.round((score / questions.length) * 100);
-    const msg = pct >= 80 ? 'Excellent, tu maîtrises !' : pct >= 60 ? 'Bon, continue à réviser !' : 'À retravailler — courage !';
+    const msg = pct >= 80 ? 'Excellent, tu maîtrises.' : pct >= 60 ? 'Bon, continue à réviser.' : 'À retravailler — courage.';
     return (
-      <div className="card pop" style={{ textAlign: 'center', padding: 24 }}>
-        {title && <div style={{ fontFamily: 'var(--font-script)', fontSize: 22, color: 'var(--ink-soft)', marginBottom: 8 }}>{title}</div>}
-        <div style={{ fontFamily: 'var(--font-script)', fontSize: 40, fontWeight: 700, color: 'var(--rose-deep)' }}>
-          {score} / {questions.length}
+      <div className="pop" style={{ padding: '40px 0', textAlign: 'center' }}>
+        <div className="eyebrow" style={{ marginBottom: 14 }}>Résultat</div>
+        <div className="display" style={{ fontSize: 80, lineHeight: 1, marginBottom: 6 }}>
+          <span style={{ color:'var(--accent)', fontStyle:'italic' }}>{score}</span>
+          <span style={{ color:'var(--ink-4)', fontSize: 50 }}> / {questions.length}</span>
         </div>
-        <div style={{ fontFamily: 'var(--font-script)', fontSize: 28, color: 'var(--ink)', marginTop: 4 }}>{pct}%</div>
-        <div style={{ fontFamily: 'var(--font-hand)', fontSize: 18, color: 'var(--ink-soft)', marginTop: 12 }}>{msg}</div>
-        <button className="btn btn-primary" onClick={restart} style={{ marginTop: 18, width: '100%' }}>Recommencer</button>
-        {onExit && <button className="btn btn-ghost" onClick={onExit} style={{ marginTop: 8, width: '100%' }}>Retour</button>}
+        <div className="display" style={{ fontSize: 28, fontStyle:'italic', color:'var(--ink-2)' }}>{pct}%</div>
+        <div style={{ fontSize: 14, color:'var(--ink-3)', marginTop: 18, fontStyle:'italic' }}>{msg}</div>
+        <div style={{ display:'flex', gap: 10, marginTop: 28 }}>
+          {onExit && <button className="btn btn-ghost" onClick={onExit} style={{ flex: 1 }}>Retour</button>}
+          <button className="btn btn-primary" onClick={restart} style={{ flex: 1 }}>Recommencer</button>
+        </div>
       </div>
     );
   }
@@ -149,53 +144,69 @@ function QuizPlayer({ questions, title, onExit }) {
 
   return (
     <div className="pop">
-      {title && (
-        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-          {onExit && <button className="btn btn-ghost" onClick={onExit} style={{ padding: '6px 12px', fontSize: 12 }}>← Retour</button>}
-          <span style={{ fontFamily: 'var(--font-script)', fontSize: 22, fontWeight: 600, lineHeight: 1.2, flex: 1 }}>{title}</span>
+      <div style={{ display:'flex', alignItems:'center', gap: 12, marginBottom: 14 }}>
+        {onExit && <button className="back" onClick={onExit}>{Icon.back}</button>}
+        <div style={{ flex: 1 }}>
+          <div className="eyebrow" style={{ fontSize: 9.5, marginBottom: 2 }}>{title || 'Quiz'}</div>
+          <div style={{ fontSize: 12, color:'var(--ink-3)' }}>
+            <span style={{ fontFamily:'var(--font-display)', fontStyle:'italic', fontSize: 16, color:'var(--ink)' }}>{idx+1}</span>
+            <span style={{ color:'var(--ink-4)' }}> / {questions.length}</span>
+            <span style={{ margin: '0 8px', color: 'var(--ink-4)' }}>·</span>
+            <span style={{ color:'var(--accent)' }}>{score} bon{score > 1 ? 's' : ''}</span>
+          </div>
         </div>
-      )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <div style={{ flex: 1, height: 6, background: 'rgba(58,42,31,.1)', borderRadius: 3, overflow: 'hidden' }}>
-          <div style={{ width: `${progress}%`, height: '100%', background: 'var(--rose-deep)', transition: 'width .3s' }}/>
-        </div>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>{idx + 1}/{questions.length}</span>
-        <span style={{ fontFamily: 'var(--font-script)', fontSize: 20, fontWeight: 700, color: 'var(--mint-deep)' }}>✓ {score}</span>
       </div>
 
-      <div className="card" style={{ padding: 18, marginBottom: 12 }}>
-        <div style={{ fontFamily: 'var(--font-hand)', fontSize: 19, lineHeight: 1.4, color: 'var(--ink)' }}>{cur.q}</div>
+      <div style={{ height: 2, background:'var(--line)', borderRadius: 1, overflow:'hidden', marginBottom: 22 }}>
+        <div style={{ width: `${progress}%`, height:'100%', background:'var(--accent)', transition:'width .3s' }}/>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{
+        background:'var(--paper-2)', border:'1px solid var(--line)',
+        borderRadius:'var(--radius-lg)', padding: 22, marginBottom: 14,
+      }}>
+        <div className="eyebrow" style={{ fontSize: 9.5, marginBottom: 10 }}>Question {idx+1}</div>
+        <div className="display" style={{ fontSize: 21, lineHeight: 1.25 }}>{cur.q}</div>
+      </div>
+
+      <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
         {cur.a.map((opt, i) => {
           const isCorrect = i === cur.correct;
           const isPicked = picked === i;
-          let bg = 'var(--paper)', border = '1px solid var(--line)', color = 'var(--ink)';
+          let bg = 'transparent', border = '1px solid var(--line-2)', color = 'var(--ink)';
           if (picked !== null) {
-            if (isCorrect) { bg = 'var(--mint-pale)'; border = '2px solid var(--mint-deep)'; color = 'var(--mint-deep)'; }
-            else if (isPicked) { bg = 'var(--rose-pale)'; border = '2px solid var(--rose-deep)'; color = 'var(--rose-deep)'; }
+            if (isCorrect) { bg = 'var(--secondary-bg)'; border = '1px solid var(--secondary)'; color = 'var(--secondary)'; }
+            else if (isPicked) { bg = 'var(--accent-bg)'; border = '1px solid var(--accent)'; color = 'var(--accent-ink)'; }
+            else { color = 'var(--ink-4)'; }
           }
           return (
             <button key={i} onClick={() => pick(i)} disabled={picked !== null}
-              style={{ background: bg, border, color, borderRadius: 14, padding: '12px 14px',
-                fontFamily: 'var(--font-hand)', fontSize: 17, textAlign: 'left',
+              style={{ background: bg, border, color, borderRadius:'var(--radius)',
+                padding:'14px 16px', textAlign:'left',
                 cursor: picked === null ? 'pointer' : 'default',
-                display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(58,42,31,.08)',
-                fontFamily: 'var(--font-script)', fontWeight: 700, fontSize: 17,
-                display: 'grid', placeItems: 'center', flexShrink: 0 }}>{['A','B','C','D'][i]}</span>
-              <span style={{ flex: 1 }}>{opt}</span>
-              {picked !== null && isCorrect && <span style={{ fontSize: 18 }}>✓</span>}
-              {picked !== null && isPicked && !isCorrect && <span style={{ fontSize: 18 }}>✗</span>}
+                display:'flex', alignItems:'center', gap: 12,
+                fontFamily:'var(--font-body)', fontSize: 14.5,
+                transition: 'all .15s' }}>
+              <span style={{
+                width: 26, height: 26, borderRadius:'50%',
+                border: '1px solid currentColor',
+                fontFamily:'var(--font-display)', fontStyle:'italic',
+                fontSize: 14,
+                display:'grid', placeItems:'center', flexShrink: 0,
+                opacity: 0.7,
+              }}>{['a','b','c','d'][i]}</span>
+              <span style={{ flex: 1, lineHeight: 1.35 }}>{opt}</span>
+              {picked !== null && isCorrect && <span style={{ display:'flex' }}>{Icon.check}</span>}
+              {picked !== null && isPicked && !isCorrect && <span style={{ display:'flex' }}>{Icon.close}</span>}
             </button>
           );
         })}
       </div>
 
       {picked !== null && (
-        <button className="btn btn-primary" onClick={next} style={{ marginTop: 14, width: '100%' }}>
-          {idx + 1 >= questions.length ? 'Voir mon score' : 'Suivant →'}
+        <button className="btn btn-primary" onClick={next} style={{ marginTop: 20, width:'100%' }}>
+          {idx + 1 >= questions.length ? 'Voir mon score' : 'Suivant'}
+          {idx + 1 < questions.length && Icon.arrowR}
         </button>
       )}
     </div>
@@ -203,17 +214,16 @@ function QuizPlayer({ questions, title, onExit }) {
 }
 
 /* ================================================================
-   QUIZ TAB — menu de modes + génération IA
+   QUIZ TAB
    ================================================================ */
 function QuizTab() {
-  const [mode, setMode] = rS('menu');           // 'menu' | 'classic' | 'giant' | 'ai'
   const [aiBank, setAiBank] = rS(() => window.Storage.loadQuizBank());
-  const [photoQuizzes, setPhotoQuizzes] = rS(() => window.Storage.loadPhotoQuizzes());
+  const [photoQuizzes] = rS(() => window.Storage.loadPhotoQuizzes());
   const [generating, setGenerating] = rS(false);
   const [genError, setGenError] = rS('');
   const [genTheme, setGenTheme] = rS('mix');
   const [showGen, setShowGen] = rS(false);
-  const [activeQuiz, setActiveQuiz] = rS(null); // {questions, title}
+  const [activeQuiz, setActiveQuiz] = rS(null);
 
   function startClassic() {
     setActiveQuiz({ questions: shuffle(QUIZ_BANK).slice(0, 10), title: 'Quiz CAP' });
@@ -223,125 +233,115 @@ function QuizTab() {
     setActiveQuiz({ questions: shuffle(aiBank).slice(0, Math.min(10, aiBank.length)), title: 'Quiz IA' });
   }
   function startGiant() {
-    // mélange tout : banque + IA + toutes questions des photo-quiz
-    const all = [
-      ...QUIZ_BANK,
-      ...aiBank,
-      ...photoQuizzes.flatMap(pq => pq.questions || []),
-    ];
+    const all = [...QUIZ_BANK, ...aiBank, ...photoQuizzes.flatMap(pq => pq.questions || [])];
     if (!all.length) return;
-    setActiveQuiz({ questions: shuffle(all).slice(0, 15), title: 'Quiz géant 🎲' });
+    setActiveQuiz({ questions: shuffle(all).slice(0, 15), title: 'Quiz géant' });
   }
-
   async function generate() {
-    setGenerating(true);
-    setGenError('');
+    setGenerating(true); setGenError('');
     try {
       const avoid = aiBank.map(q => q.q).concat(QUIZ_BANK.map(q => q.q));
       const result = await window.AI.generateQuestions(genTheme, avoid);
       if (!result?.questions?.length) throw new Error('Pas de questions générées');
       const next = window.Storage.addToQuizBank(result.questions);
-      setAiBank(next);
-      setShowGen(false);
+      setAiBank(next); setShowGen(false);
     } catch (e) {
-      console.error(e);
       setGenError(e.message || 'Erreur lors de la génération');
-    } finally {
-      setGenerating(false);
-    }
+    } finally { setGenerating(false); }
   }
-
   function clearAiBank() {
     if (!confirm('Effacer toutes les questions générées par IA ?')) return;
-    window.Storage.saveQuizBank([]);
-    setAiBank([]);
+    window.Storage.saveQuizBank([]); setAiBank([]);
   }
 
   if (activeQuiz) {
-    return <QuizPlayer
-      questions={activeQuiz.questions}
-      title={activeQuiz.title}
-      onExit={() => setActiveQuiz(null)}/>;
+    return <QuizPlayer questions={activeQuiz.questions} title={activeQuiz.title} onExit={() => setActiveQuiz(null)}/>;
   }
 
-  // Menu
   const totalQuestions = QUIZ_BANK.length + aiBank.length + photoQuizzes.reduce((n, q) => n + (q.questions?.length || 0), 0);
 
   return (
-    <div className="pop" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="pop" style={{ display:'flex', flexDirection:'column', gap: 10 }}>
       <ModeCard
-        title="Quiz CAP classique"
-        subtitle={`${QUIZ_BANK.length} questions de référence`}
+        eyebrow="Référence"
+        title="Quiz CAP" italic="classique"
+        sub={`${QUIZ_BANK.length} questions de référence`}
         cta="10 questions au hasard"
-        accent="rose"
         onClick={startClassic}/>
 
       <ModeCard
-        title="Quiz IA personnalisé"
-        subtitle={aiBank.length ? `${aiBank.length} questions IA en banque` : 'aucune question IA — génère-en !'}
+        eyebrow="Personnalisé"
+        title="Quiz" italic="IA"
+        sub={aiBank.length ? `${aiBank.length} questions IA en banque` : 'aucune question IA — génère-en !'}
         cta={aiBank.length ? "Lancer le quiz IA" : "Génère ta première fournée ↓"}
-        accent="mint"
         disabled={!aiBank.length}
         onClick={startAI}/>
 
-      <button onClick={() => setShowGen(true)} className="btn btn-mint" style={{ marginTop: 4 }}>
-        ✨ Générer 10 nouvelles questions IA
+      <button onClick={() => setShowGen(true)} className="btn btn-accent" style={{ marginTop: 6 }}>
+        {Icon.sparkles} Générer 10 nouvelles questions
       </button>
       {aiBank.length > 0 && (
-        <button onClick={clearAiBank} className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px', alignSelf: 'flex-end' }}>
-          🗑️ Effacer la banque IA
+        <button onClick={clearAiBank} className="btn btn-ghost" style={{ fontSize: 12, padding:'8px 14px', alignSelf:'flex-end' }}>
+          {Icon.trash} Effacer la banque IA
         </button>
       )}
 
-      <div style={{ height: 8 }}/>
+      <div style={{ height: 4 }}/>
 
       <ModeCard
-        title="Quiz GÉANT 🎲"
-        subtitle={`mélange tout : banque + IA + photo-quiz (${totalQuestions} questions)`}
-        cta="15 questions tirées au hasard de partout"
-        accent="cream"
+        eyebrow="Mode total"
+        title="Quiz" italic="géant"
+        sub={`Mélange tout — banque + IA + photo (${totalQuestions} questions)`}
+        cta="15 questions tirées au hasard"
+        dark
         onClick={startGiant}/>
 
-      {/* Generation modal */}
       {showGen && (
-        <div className="modal-backdrop" onClick={() => !generating && setShowGen(false)}>
-          <div className="modal-sheet" onClick={e => e.stopPropagation()}>
-            <div className="grabber"/>
-            <div style={{ marginBottom: 14 }}>
-              <span className="watercolor mint" style={{ fontSize: 26 }}>Générer des questions</span>
+        <div style={{
+          position:'fixed', inset: 0, background:'rgba(26,22,18,.55)',
+          display:'grid', placeItems:'end center', zIndex: 100,
+          padding: 0,
+        }} onClick={() => !generating && setShowGen(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background:'var(--paper)', borderRadius:'24px 24px 0 0',
+            padding: '24px 22px 32px', width: '100%', maxWidth: 480,
+            border:'1px solid var(--line)',
+          }}>
+            <div style={{ width: 40, height: 4, background:'var(--line-2)', borderRadius: 2, margin: '0 auto 18px' }}/>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>Génération IA</div>
+            <div className="display" style={{ fontSize: 28, marginBottom: 8 }}>
+              10 questions <span style={{ fontStyle:'italic', color:'var(--accent)' }}>inédites</span>
             </div>
-            <div style={{ fontFamily: 'var(--font-hand)', fontSize: 16, color: 'var(--ink-soft)', marginBottom: 12, lineHeight: 1.4 }}>
-              L'IA va créer 10 questions inédites niveau CAP, ajoutées à ta banque.
+            <div style={{ fontSize: 13.5, color:'var(--ink-3)', marginBottom: 18, lineHeight: 1.4 }}>
+              L'IA crée des questions niveau CAP, ajoutées à ta banque.
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Thème</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {[
-                  ['mix', '🎲 Mix tout'],
-                  ['techniques', '👨‍🍳 Techniques'],
-                  ['temperatures', '🌡️ Températures'],
-                  ['proportions', '⚖️ Proportions'],
-                  ['hygiene', '🧼 Hygiène'],
-                  ['materiel', '🥄 Matériel'],
-                ].map(([k, l]) => (
-                  <button key={k}
-                    className={`chip ${genTheme === k ? 'active' : ''}`}
-                    onClick={() => setGenTheme(k)}
-                    style={{ padding: '10px 8px', textAlign: 'center' }}>
-                    {l}
-                  </button>
-                ))}
-              </div>
+            <div className="eyebrow" style={{ fontSize: 9.5, marginBottom: 8 }}>Thème</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 6, marginBottom: 18 }}>
+              {[
+                ['mix', 'Mix tout'],
+                ['techniques', 'Techniques'],
+                ['temperatures', 'Températures'],
+                ['proportions', 'Proportions'],
+                ['hygiene', 'Hygiène'],
+                ['materiel', 'Matériel'],
+              ].map(([k, l]) => (
+                <button key={k}
+                  className={`chip ${genTheme === k ? 'active' : ''}`}
+                  onClick={() => setGenTheme(k)}
+                  style={{ padding:'10px 8px', textAlign:'center', justifyContent:'center' }}>
+                  {l}
+                </button>
+              ))}
             </div>
             {genError && (
-              <div style={{ background: 'var(--rose-pale)', borderRadius: 10, padding: 10, marginBottom: 10, fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--rose-deep)' }}>
-                ⚠️ {genError}
+              <div style={{ background:'var(--accent-bg)', borderRadius:'var(--radius)', padding: 12, marginBottom: 12, fontSize: 13, color:'var(--accent-ink)' }}>
+                {genError}
               </div>
             )}
-            <button className="btn btn-primary" onClick={generate} disabled={generating} style={{ width: '100%' }}>
-              {generating ? <><span className="spin"/> Génération en cours…</> : '✨ Générer 10 questions'}
+            <button className="btn btn-primary" onClick={generate} disabled={generating} style={{ width:'100%' }}>
+              {generating ? <><span className="spin"/> Génération…</> : <>{Icon.sparkles} Générer</>}
             </button>
-            <button className="btn btn-ghost" onClick={() => setShowGen(false)} disabled={generating} style={{ width: '100%', marginTop: 8 }}>
+            <button className="btn btn-ghost" onClick={() => setShowGen(false)} disabled={generating} style={{ width:'100%', marginTop: 8 }}>
               Annuler
             </button>
           </div>
@@ -351,20 +351,25 @@ function QuizTab() {
   );
 }
 
-function ModeCard({ title, subtitle, cta, accent = 'rose', onClick, disabled }) {
-  const accentColor = accent === 'mint' ? 'var(--mint-deep)' : accent === 'cream' ? '#a87838' : 'var(--rose-deep)';
-  const accentBg = accent === 'mint' ? 'var(--mint-pale)' : accent === 'cream' ? 'var(--cream)' : 'var(--rose-pale)';
+function ModeCard({ eyebrow, title, italic, sub, cta, onClick, disabled, dark }) {
   return (
-    <button onClick={onClick} disabled={disabled} className="card pop" style={{
-      textAlign: 'left', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? .5 : 1,
-      border: 'none', padding: 14, display: 'flex', flexDirection: 'column', gap: 4,
-      background: accentBg,
+    <button onClick={onClick} disabled={disabled} style={{
+      textAlign:'left', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+      background: dark ? 'var(--ink)' : 'var(--paper-2)',
+      color: dark ? 'var(--paper)' : 'var(--ink)',
+      border: dark ? 'none' : '1px solid var(--line)',
+      borderRadius:'var(--radius-lg)',
+      padding: 20,
+      display:'flex', flexDirection:'column', gap: 4,
+      width:'100%',
     }}>
-      <div style={{ fontFamily: 'var(--font-script)', fontSize: 24, fontWeight: 700, color: accentColor, lineHeight: 1.1 }}>
-        {title}
+      <div className="eyebrow" style={{ color: dark ? 'var(--accent-soft)' : 'var(--ink-3)', marginBottom: 4 }}>{eyebrow}</div>
+      <div className="display" style={{ fontSize: 28, color: dark ? 'var(--paper)' : 'var(--ink)' }}>
+        {title} <span style={{ fontStyle:'italic', color: dark ? 'var(--accent-soft)' : 'var(--accent)' }}>{italic}</span>
       </div>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink-soft)' }}>{subtitle}</div>
-      <div style={{ fontFamily: 'var(--font-hand)', fontSize: 16, color: 'var(--ink)', marginTop: 6 }}>{cta} →</div>
+      <div style={{ fontSize: 12.5, color: dark ? 'rgba(245,240,232,.6)' : 'var(--ink-3)', marginTop: 4 }}>{sub}</div>
+      <div style={{ fontSize: 13, color: dark ? 'var(--accent-soft)' : 'var(--accent)', marginTop: 10,
+        fontFamily:'var(--font-display)', fontStyle:'italic' }}>{cta} →</div>
     </button>
   );
 }
@@ -381,56 +386,61 @@ function FlashcardsTab() {
   function next(gotIt) {
     if (gotIt) setKnown(k => k + 1);
     setFlipped(false);
-    if (idx + 1 >= deck.length) {
-      setIdx(0);
-      setDeck(shuffle(FLASHCARDS));
-      setKnown(0);
-    } else { setIdx(idx + 1); }
+    if (idx + 1 >= deck.length) { setIdx(0); setDeck(shuffle(FLASHCARDS)); setKnown(0); }
+    else setIdx(idx + 1);
   }
-
   const card = deck[idx];
 
   return (
     <div className="pop">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>Carte {idx + 1}/{deck.length}</span>
-        <div style={{ flex: 1 }}/>
-        <span style={{ fontFamily: 'var(--font-script)', fontSize: 20, fontWeight: 700, color: 'var(--mint-deep)' }}>✓ {known} su{known > 1 ? 's' : ''}</span>
+      <div style={{ display:'flex', alignItems:'baseline', gap: 14, marginBottom: 18 }}>
+        <div style={{ flex: 1 }}>
+          <div className="eyebrow" style={{ fontSize: 9.5, marginBottom: 2 }}>Flashcards</div>
+          <div style={{ fontSize: 12, color:'var(--ink-3)' }}>
+            <span style={{ fontFamily:'var(--font-display)', fontStyle:'italic', fontSize: 16, color:'var(--ink)' }}>{idx+1}</span>
+            <span style={{ color:'var(--ink-4)' }}> / {deck.length}</span>
+            <span style={{ margin:'0 8px', color:'var(--ink-4)' }}>·</span>
+            <span style={{ color:'var(--secondary)' }}>{known} su{known > 1 ? 's' : ''}</span>
+          </div>
+        </div>
       </div>
 
       <div onClick={() => setFlipped(!flipped)}
-        style={{ width: '100%', height: 280, perspective: 1200, cursor: 'pointer', marginBottom: 18 }}>
+        style={{ width:'100%', height: 320, perspective: 1200, cursor:'pointer', marginBottom: 20 }}>
         <div style={{
-          width: '100%', height: '100%', transformStyle: 'preserve-3d',
-          transition: 'transform .55s cubic-bezier(.4, .2, .3, 1)',
+          width:'100%', height:'100%', transformStyle:'preserve-3d',
+          transition:'transform .55s cubic-bezier(.4,.2,.3,1)',
           transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-          position: 'relative',
+          position:'relative',
         }}>
-          <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
-            background: 'var(--paper)', border: '1px solid var(--line-soft)', borderRadius: 18,
-            boxShadow: 'var(--shadow-card)', display: 'grid', placeItems: 'center', padding: 24,
-            transform: 'rotate(-.5deg)' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Terme</div>
-              <div style={{ fontFamily: 'var(--font-script)', fontSize: 48, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.1 }}>{card.f}</div>
-              <div style={{ fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--ink-faint)', marginTop: 18 }}>tap pour retourner ↻</div>
+          {/* Recto */}
+          <div style={{ position:'absolute', inset: 0, backfaceVisibility:'hidden',
+            background:'var(--paper-2)', border:'1px solid var(--line)',
+            borderRadius:'var(--radius-lg)',
+            display:'grid', placeItems:'center', padding: 28 }}>
+            <div style={{ textAlign:'center' }}>
+              <div className="eyebrow" style={{ marginBottom: 18 }}>Terme</div>
+              <div className="display" style={{ fontSize: 42, lineHeight: 1.05 }}>{card.f}</div>
+              <div style={{ fontSize: 11.5, color:'var(--ink-4)', marginTop: 22, fontStyle:'italic', fontFamily:'var(--font-display)' }}>tap pour retourner</div>
             </div>
           </div>
-          <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg) rotate(.5deg)',
-            background: 'var(--mint-pale)', border: '1px solid var(--mint-deep)', borderRadius: 18,
-            boxShadow: 'var(--shadow-card)', display: 'grid', placeItems: 'center', padding: 28 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--mint-deep)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Définition</div>
-              <div style={{ fontFamily: 'var(--font-hand)', fontSize: 19, color: 'var(--ink)', lineHeight: 1.45 }}>{card.b}</div>
+          {/* Verso */}
+          <div style={{ position:'absolute', inset: 0, backfaceVisibility:'hidden',
+            transform:'rotateY(180deg)',
+            background:'var(--ink)', color:'var(--paper)',
+            borderRadius:'var(--radius-lg)',
+            display:'grid', placeItems:'center', padding: 32 }}>
+            <div style={{ textAlign:'center' }}>
+              <div className="eyebrow" style={{ marginBottom: 16, color:'var(--accent-soft)' }}>Définition</div>
+              <div style={{ fontFamily:'var(--font-body)', fontSize: 17, lineHeight: 1.5 }}>{card.b}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button className="btn btn-ghost" onClick={() => next(false)} style={{ flex: 1 }}>🔁 À revoir</button>
-        <button className="btn btn-mint" onClick={() => next(true)} style={{ flex: 1 }}>✓ Je sais</button>
+      <div style={{ display:'flex', gap: 10 }}>
+        <button className="btn btn-ghost" onClick={() => next(false)} style={{ flex: 1 }}>{Icon.refresh} À revoir</button>
+        <button className="btn btn-primary" onClick={() => next(true)} style={{ flex: 1 }}>{Icon.check} Je sais</button>
       </div>
     </div>
   );
@@ -441,44 +451,43 @@ function FlashcardsTab() {
    ================================================================ */
 function TemperaturesTab() {
   return (
-    <div className="pop" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="pop" style={{ display:'flex', flexDirection:'column', gap: 22 }}>
       {TEMP_TABLES.map((t, i) => (
-        <div key={i} className="card" style={{ padding: 14 }}>
-          <div style={{ marginBottom: 10 }}>
-            <span className={`watercolor ${i === 0 ? '' : i === 1 ? 'cream' : i === 2 ? 'mint' : ''}`} style={{ fontSize: 24, padding: '2px 14px' }}>{t.title}</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div key={i}>
+          <div className="eyebrow" style={{ marginBottom: 4 }}>Table {String(i+1).padStart(2,'0')}</div>
+          <div className="display" style={{ fontSize: 26, marginBottom: 14, fontStyle:'italic' }}>{t.title}</div>
+          <div style={{ background:'var(--paper-2)', border:'1px solid var(--line)', borderRadius:'var(--radius-lg)', overflow:'hidden' }}>
             {t.rows.map((row, j) => (
               <div key={j} style={{
-                display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 12, rowGap: 2,
-                padding: '8px 0',
-                borderBottom: j < t.rows.length - 1 ? '1px dashed var(--line)' : 'none',
-                alignItems: 'baseline',
+                padding:'14px 16px',
+                borderBottom: j < t.rows.length - 1 ? '1px solid var(--line)' : 'none',
               }}>
-                <div style={{ fontFamily: 'var(--font-hand)', fontSize: 17, color: 'var(--ink)' }}>{row[0]}</div>
-                <div style={{ fontFamily: 'var(--font-script)', fontSize: 20, fontWeight: 700, color: 'var(--rose-deep)', whiteSpace: 'nowrap' }}>{row[1]}</div>
-                {row[2] && <div style={{ gridColumn: '1 / -1', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink-faint)', fontStyle: 'italic' }}>{row[2]}</div>}
+                <div style={{ display:'flex', alignItems:'baseline', gap: 12, justifyContent:'space-between' }}>
+                  <div style={{ fontSize: 14.5, color:'var(--ink)' }}>{row[0]}</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontStyle:'italic', fontSize: 18, color:'var(--accent)', whiteSpace:'nowrap' }}>{row[1]}</div>
+                </div>
+                {row[2] && <div style={{ fontSize: 12, color:'var(--ink-4)', marginTop: 4, fontStyle:'italic' }}>{row[2]}</div>}
               </div>
             ))}
           </div>
         </div>
       ))}
-      <div style={{ fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--ink-faint)', textAlign: 'center', padding: '4px 0 8px' }}>
-        Astuce : ces températures sont à connaître par cœur pour le CAP.
+      <div style={{ fontSize: 12, color:'var(--ink-4)', textAlign:'center', fontStyle:'italic', padding: 4 }}>
+        À connaître par cœur pour le CAP.
       </div>
     </div>
   );
 }
 
 /* ================================================================
-   PHOTO → QUIZ + bibliothèque "Mes Quiz"
+   PHOTO → QUIZ
    ================================================================ */
 function PhotoQuizTab() {
   const [photo, setPhoto] = rS('');
   const [loading, setLoading] = rS(false);
   const [error, setError] = rS('');
-  const [pending, setPending] = rS(null); // quiz fraîchement généré, pas encore sauvegardé
-  const [activeQuiz, setActiveQuiz] = rS(null); // quiz en cours de lecture (rejouer un sauvegardé)
+  const [pending, setPending] = rS(null);
+  const [activeQuiz, setActiveQuiz] = rS(null);
 
   function pickPhoto(e) {
     const file = e.target.files?.[0];
@@ -499,118 +508,106 @@ function PhotoQuizTab() {
     };
     reader.readAsDataURL(file);
   }
-
   async function generate() {
     if (!photo) return;
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const result = await window.AI.photoQuiz(photo);
       if (!result?.questions?.length) throw new Error('Pas de questions générées');
-      // store also a small thumbnail for the library
       const thumb = await makeThumb(photo, 200);
       setPending({ ...result, thumb });
     } catch (e) {
-      console.error(e);
-      setError(e.message || 'Erreur. Vérifie que ta clé Gemini est configurée (le mode photo nécessite Gemini).');
-    } finally {
-      setLoading(false);
-    }
+      setError(e.message || 'Erreur. Vérifie la config IA.');
+    } finally { setLoading(false); }
   }
-
   function saveAndPlay() {
     if (!pending) return;
-    window.Storage.addPhotoQuiz({
-      title: pending.title,
-      thumb: pending.thumb,
-      questions: pending.questions,
-    });
+    window.Storage.addPhotoQuiz({ title: pending.title, thumb: pending.thumb, questions: pending.questions });
     setActiveQuiz({ title: pending.title, questions: pending.questions });
-    setPending(null);
-    setPhoto('');
+    setPending(null); setPhoto('');
   }
-
   function discardAndPlay() {
     if (!pending) return;
     setActiveQuiz({ title: pending.title, questions: pending.questions });
-    setPending(null);
-    setPhoto('');
+    setPending(null); setPhoto('');
   }
 
   if (activeQuiz) {
     return <QuizPlayer questions={activeQuiz.questions} title={activeQuiz.title} onExit={() => setActiveQuiz(null)}/>;
   }
-
-  // Pending = preview du quiz généré, propose sauvegarder
   if (pending) {
     return (
       <div className="pop">
-        <div className="card" style={{ padding: 16 }}>
-          <div style={{ fontFamily: 'var(--font-script)', fontSize: 26, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
-            ✨ Quiz prêt !
+        <div style={{ background:'var(--paper-2)', border:'1px solid var(--line)', borderRadius:'var(--radius-lg)', padding: 22 }}>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Prêt</div>
+          <div className="display" style={{ fontSize: 28, marginBottom: 12 }}>
+            Quiz <span style={{ fontStyle:'italic', color:'var(--accent)' }}>généré</span>
           </div>
-          <div style={{ fontFamily: 'var(--font-hand)', fontSize: 18, color: 'var(--ink-soft)', marginBottom: 12 }}>
-            <strong>{pending.title}</strong><br/>
-            {pending.questions.length} questions générées par l'IA
+          <div style={{ display:'flex', alignItems:'center', gap: 14, marginBottom: 18 }}>
+            {pending.thumb && (
+              <img src={pending.thumb} alt="" style={{ width: 64, height: 64, objectFit:'cover', borderRadius:'var(--radius)', border:'1px solid var(--line)' }}/>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, color:'var(--ink)', fontWeight: 500 }}>{pending.title}</div>
+              <div style={{ fontSize: 12, color:'var(--ink-3)', marginTop: 2 }}>{pending.questions.length} questions</div>
+            </div>
           </div>
-          {pending.thumb && (
-            <img src={pending.thumb} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--line)', marginBottom: 12 }}/>
-          )}
-          <button className="btn btn-primary" onClick={saveAndPlay} style={{ width: '100%' }}>
+          <button className="btn btn-primary" onClick={saveAndPlay} style={{ width:'100%' }}>
             {Icon.save} Sauvegarder et commencer
           </button>
-          <button className="btn btn-ghost" onClick={discardAndPlay} style={{ width: '100%', marginTop: 8 }}>
+          <button className="btn btn-ghost" onClick={discardAndPlay} style={{ width:'100%', marginTop: 8 }}>
             Jouer sans sauvegarder
           </button>
-          <button className="btn btn-ghost" onClick={() => { setPending(null); setPhoto(''); }} style={{ width: '100%', marginTop: 4, color: 'var(--ink-faint)', fontSize: 13 }}>
-            Annuler
-          </button>
+          <button onClick={() => { setPending(null); setPhoto(''); }} style={{
+            background:'none', border:'none', cursor:'pointer',
+            width:'100%', marginTop: 6, fontSize: 12, color:'var(--ink-4)', padding: 8,
+          }}>Annuler</button>
         </div>
       </div>
     );
   }
 
-  // Initial: upload UI
   return (
     <div className="pop">
-      <div className="card" style={{ padding: 14, marginBottom: 14, background: 'var(--mint-pale)' }}>
-        <div style={{ fontFamily: 'var(--font-hand)', fontSize: 16, color: 'var(--ink)', lineHeight: 1.45 }}>
-          📸 <strong>Prends en photo ta fiche de cours</strong> — l'IA lit le contenu et te génère un quiz que tu peux sauvegarder dans <em>Mes Quiz</em> pour le rejouer plus tard.
-        </div>
+      <div className="eyebrow" style={{ marginBottom: 6 }}>Photo → Quiz</div>
+      <div className="display" style={{ fontSize: 26, marginBottom: 8 }}>
+        Ta fiche, <span style={{ fontStyle:'italic', color:'var(--accent)' }}>en quiz</span>
+      </div>
+      <div style={{ fontSize: 13.5, color:'var(--ink-3)', marginBottom: 18, lineHeight: 1.5 }}>
+        Prends en photo ta fiche de cours — l'IA lit le contenu et génère un quiz personnalisé que tu peux sauvegarder dans <em style={{ fontFamily:'var(--font-display)' }}>Mes Quiz</em>.
       </div>
 
-      <label style={{ display: 'block', cursor: 'pointer', marginBottom: 14 }}>
-        <input type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }}/>
+      <label style={{ display:'block', cursor:'pointer', marginBottom: 14 }}>
+        <input type="file" accept="image/*" onChange={pickPhoto} style={{ display:'none' }}/>
         {photo ? (
-          <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--line)' }}>
-            <img src={photo} alt="" style={{ width: '100%', display: 'block', maxHeight: 300, objectFit: 'cover' }}/>
+          <div style={{ position:'relative', borderRadius:'var(--radius-lg)', overflow:'hidden', border:'1px solid var(--line)' }}>
+            <img src={photo} alt="" style={{ width:'100%', display:'block', maxHeight: 320, objectFit:'cover' }}/>
             <button type="button" onClick={(e) => { e.preventDefault(); setPhoto(''); }}
-              className="back" style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,.95)' }}>✕</button>
+              className="back" style={{ position:'absolute', top: 10, right: 10, background:'rgba(245,240,232,.95)' }}>{Icon.close}</button>
           </div>
         ) : (
-          <div style={{ border: '2px dashed var(--rose-deep)', borderRadius: 18, padding: 36, textAlign: 'center', background: 'rgba(255,255,255,.4)' }}>
-            <div style={{ display:'flex', justifyContent:'center', color:'var(--ink-faint)' }}>{Icon.camera}</div>
-            <div style={{ fontFamily: 'var(--font-script)', fontSize: 22, fontWeight: 600, color: 'var(--ink)', marginTop: 6 }}>Choisir / prendre une photo</div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink-faint)', marginTop: 4 }}>fiche, recette, document de cours</div>
+          <div style={{
+            border:'1px dashed var(--line-2)', borderRadius:'var(--radius-lg)',
+            padding: 44, textAlign:'center',
+            background:'var(--paper-2)',
+          }}>
+            <div style={{ display:'flex', justifyContent:'center', color:'var(--ink-3)', marginBottom: 10 }}>{Icon.camera}</div>
+            <div className="display" style={{ fontSize: 22, fontStyle:'italic' }}>Choisir une photo</div>
+            <div style={{ fontSize: 12, color:'var(--ink-4)', marginTop: 4 }}>fiche, recette, document de cours</div>
           </div>
         )}
       </label>
 
       {photo && (
-        <button className="btn btn-primary" onClick={generate} disabled={loading} style={{ width: '100%' }}>
-          {loading ? <><span className="spin"/> L'IA lit ta fiche…</> : '✨ Générer le quiz'}
+        <button className="btn btn-primary" onClick={generate} disabled={loading} style={{ width:'100%' }}>
+          {loading ? <><span className="spin"/> L'IA lit ta fiche…</> : <>{Icon.sparkles} Générer le quiz</>}
         </button>
       )}
-
       {error && (
-        <div className="card" style={{ marginTop: 12, padding: 12, background: 'var(--rose-pale)', borderColor: 'var(--rose-deep)' }}>
-          <div style={{ fontFamily: 'var(--font-hand)', fontSize: 15, color: 'var(--rose-deep)' }}>⚠️ {error}</div>
+        <div style={{ marginTop: 14, padding: 14, background:'var(--accent-bg)', borderRadius:'var(--radius)', fontSize: 13.5, color:'var(--accent-ink)' }}>
+          {error}
         </div>
       )}
-
-      <div style={{ fontFamily: 'var(--font-hand)', fontSize: 14, color: 'var(--ink-faint)', marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
-        Cette fonction utilise <strong>Groq</strong> (lecture d'image).
-      </div>
     </div>
   );
 }
@@ -632,7 +629,7 @@ async function makeThumb(dataUrl, size) {
 }
 
 /* ================================================================
-   MES QUIZ — bibliothèque des quiz photo sauvegardés
+   MES QUIZ
    ================================================================ */
 function MyQuizTab() {
   const [quizzes, setQuizzes] = rS(() => window.Storage.loadPhotoQuizzes());
@@ -642,51 +639,55 @@ function MyQuizTab() {
     if (!confirm('Supprimer ce quiz ?')) return;
     setQuizzes(window.Storage.deletePhotoQuiz(id));
   }
-
-  if (active) {
-    return <QuizPlayer questions={active.questions} title={active.title} onExit={() => setActive(null)}/>;
-  }
+  if (active) return <QuizPlayer questions={active.questions} title={active.title} onExit={() => setActive(null)}/>;
 
   if (!quizzes.length) {
     return (
-      <div className="card pop" style={{ textAlign: 'center', padding: 28 }}>
-        <div style={{ display:'flex', justifyContent:'center', color:'var(--ink-faint)' }}>{Icon.book}</div>
-        <div style={{ fontFamily: 'var(--font-script)', fontSize: 24, fontWeight: 600, marginTop: 8 }}>Aucun quiz sauvegardé</div>
-        <div style={{ fontFamily: 'var(--font-hand)', fontSize: 16, color: 'var(--ink-soft)', marginTop: 8, lineHeight: 1.4 }}>
-          Va dans l'onglet <strong>Photo</strong>,<br/>prends en photo ta fiche de cours,<br/>l'IA générera un quiz que tu pourras sauvegarder ici.
+      <div className="pop" style={{ textAlign:'center', padding: '40px 20px' }}>
+        <div style={{ display:'flex', justifyContent:'center', color:'var(--ink-4)', marginBottom: 14 }}>{Icon.book}</div>
+        <div className="display" style={{ fontSize: 26, fontStyle:'italic' }}>Aucun quiz sauvegardé</div>
+        <div style={{ fontSize: 13.5, color:'var(--ink-3)', marginTop: 10, lineHeight: 1.5 }}>
+          Va dans l'onglet <strong style={{ color:'var(--ink)' }}>Photo</strong>, prends en photo ta fiche de cours, l'IA générera un quiz que tu pourras sauvegarder ici.
         </div>
       </div>
     );
   }
 
   return (
-    <div className="pop" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontFamily: 'var(--font-hand)', fontSize: 15, color: 'var(--ink-soft)', marginBottom: 4 }}>
-        {quizzes.length} quiz sauvegardé{quizzes.length > 1 ? 's' : ''} — tape pour rejouer
-      </div>
+    <div className="pop" style={{ display:'flex', flexDirection:'column', gap: 8 }}>
+      <div className="eyebrow" style={{ marginBottom: 4 }}>{quizzes.length} quiz · tape pour rejouer</div>
       {quizzes.map(q => (
-        <div key={q.id} className="card" style={{ padding: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div key={q.id} style={{
+          display:'flex', alignItems:'center', gap: 12,
+          background:'var(--paper-2)', border:'1px solid var(--line)',
+          borderRadius:'var(--radius-lg)', padding: 12,
+        }}>
           <button onClick={() => setActive(q)} style={{
-            flex: 1, display: 'flex', alignItems: 'center', gap: 12,
-            background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0,
+            flex: 1, display:'flex', alignItems:'center', gap: 12,
+            background:'none', border:'none', cursor:'pointer', textAlign:'left', padding: 0,
           }}>
-            <div style={{ width: 60, height: 60, borderRadius: 10, background: 'var(--paper-warm)', flexShrink: 0,
+            <div style={{
+              width: 60, height: 60, borderRadius:'var(--radius)', flexShrink: 0,
               backgroundImage: q.thumb ? `url(${q.thumb})` : undefined,
-              backgroundSize: 'cover', backgroundPosition: 'center',
-              display: 'grid', placeItems: 'center', border: '1px solid var(--line-soft)' }}>
-              {!q.thumb && <span style={{ fontSize: 24 }}>📷</span>}
+              backgroundColor: 'var(--paper-3)',
+              backgroundSize:'cover', backgroundPosition:'center',
+              border:'1px solid var(--line)',
+              display:'grid', placeItems:'center',
+              color:'var(--ink-4)',
+            }}>
+              {!q.thumb && Icon.camera}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-script)', fontSize: 20, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {q.title}
-              </div>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--ink-faint)', marginTop: 2 }}>
-                {q.questions?.length || 0} questions · {new Date(q.createdAt).toLocaleDateString('fr-FR')}
+              <div className="display" style={{ fontSize: 19, lineHeight: 1.05, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{q.title}</div>
+              <div style={{ fontSize: 11.5, color:'var(--ink-3)', marginTop: 4 }}>
+                {q.questions?.length || 0} questions
+                <span style={{ margin:'0 6px', color:'var(--ink-4)' }}>·</span>
+                {new Date(q.createdAt).toLocaleDateString('fr-FR')}
               </div>
             </div>
           </button>
-          <button onClick={() => del(q.id)} className="back" style={{ flexShrink: 0, color: 'var(--rose-deep)' }}>
-            {window.Icon?.trash || '🗑️'}
+          <button onClick={() => del(q.id)} className="back" style={{ flexShrink: 0, color:'var(--ink-4)' }}>
+            {Icon.trash}
           </button>
         </div>
       ))}
@@ -695,7 +696,77 @@ function MyQuizTab() {
 }
 
 /* ================================================================
-   ROOT — Tab navigator
+   VOCAB
+   ================================================================ */
+const VOCAB = [
+  { term: 'Crémer', def: "Travailler beurre + sucre jusqu'à obtenir un mélange mousseux et clair." },
+  { term: 'Sabler', def: 'Mélanger farine et beurre froid du bout des doigts pour une texture sableuse.' },
+  { term: 'Blanchir', def: "Fouetter œufs/jaunes + sucre jusqu'à éclaircissement et formation d'un ruban." },
+  { term: 'Tourer', def: 'Donner des tours de pliage à une pâte feuilletée.' },
+  { term: 'Pocher', def: 'Dresser une préparation à la poche à douille.' },
+  { term: 'Corner', def: 'Racler une préparation avec une corne pour ne rien perdre.' },
+  { term: 'Turbiner', def: 'Faire prendre une glace dans une sorbetière en mouvement.' },
+  { term: 'Monter', def: "Battre une préparation pour incorporer de l'air (blancs, crème)." },
+  { term: 'Détendre', def: 'Assouplir une pâte ou crème avec un liquide ou en la travaillant.' },
+  { term: 'Chemiser', def: 'Tapisser un moule avec un papier, du beurre, du sucre ou un biscuit.' },
+  { term: 'Abaisser', def: "Étaler une pâte au rouleau à l'épaisseur voulue." },
+  { term: 'Fraiser', def: 'Écraser une pâte avec la paume pour la rendre homogène.' },
+  { term: 'Émulsionner', def: 'Mélanger 2 liquides non miscibles (gras + eau) — ex. ganache.' },
+  { term: 'Foisonner', def: "Augmenter le volume d'une préparation en y intégrant de l'air." },
+  { term: 'Ruban', def: 'Stade où la pâte forme un ruban qui retombe lentement.' },
+  { term: 'Bain-marie', def: "Cuisson douce dans un récipient placé dans de l'eau chaude." },
+  { term: 'Tempérage', def: 'Stabilisation du beurre de cacao par courbe de T° pour un chocolat brillant.' },
+];
+
+function VocabTab() {
+  const [q, setQ] = rS('');
+  const [open, setOpen] = rS(null);
+  const filtered = VOCAB.filter(v =>
+    v.term.toLowerCase().includes(q.toLowerCase()) ||
+    v.def.toLowerCase().includes(q.toLowerCase())
+  );
+  return (
+    <div className="pop">
+      <div style={{ position:'relative', marginBottom: 14 }}>
+        <div style={{ position:'absolute', left: 14, top: '50%', transform:'translateY(-50%)', color:'var(--ink-4)' }}>{Icon.search}</div>
+        <input className="input" placeholder="Chercher un terme…" value={q} onChange={e => setQ(e.target.value)} style={{ paddingLeft: 42 }}/>
+      </div>
+      <div className="eyebrow" style={{ marginBottom: 10 }}>{filtered.length} terme{filtered.length > 1 ? 's' : ''}</div>
+      <div style={{ display:'flex', flexDirection:'column', gap: 6 }}>
+        {filtered.map((v, i) => {
+          const isOpen = open === i;
+          return (
+            <button key={i} onClick={() => setOpen(isOpen ? null : i)} style={{
+              textAlign:'left', cursor:'pointer',
+              background: isOpen ? 'var(--paper-2)' : 'transparent',
+              border: '1px solid var(--line)',
+              borderRadius:'var(--radius)',
+              padding: '14px 16px', width: '100%',
+              transition: 'background .15s',
+            }}>
+              <div style={{ display:'flex', alignItems:'center', gap: 10 }}>
+                <div className="display" style={{ fontSize: 20, flex: 1 }}>
+                  <span style={{ fontStyle:'italic' }}>{v.term}</span>
+                </div>
+                <span style={{ color:'var(--ink-4)', fontSize: 18, fontFamily:'var(--font-display)' }}>
+                  {isOpen ? '−' : '+'}
+                </span>
+              </div>
+              {isOpen && (
+                <div style={{ fontSize: 14, color:'var(--ink-2)', marginTop: 8, lineHeight: 1.5 }}>
+                  {v.def}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   ROOT
    ================================================================ */
 function RevisionsScreen() {
   const [tab, setTab] = rS('quiz');
@@ -709,20 +780,21 @@ function RevisionsScreen() {
   ];
   return (
     <div className="screen pop">
-      <div style={{ marginBottom: 12 }}>
-        <span className="watercolor mint">Mes Révisions</span>
+      <div className="topbar">
+        <h1>Révisions</h1>
       </div>
-      <div className="tabs" style={{ marginBottom: 14, overflowX: 'auto' }}>
+      <div className="eyebrow" style={{ marginBottom: 14 }}>Préparer le CAP</div>
+
+      <div className="chips" style={{ marginBottom: 22 }}>
         {tabs.map(([k, l]) => (
-          <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)} style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}>
-            {l}
-          </button>
+          <button key={k} className={`chip ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
+
       {tab === 'quiz' && <QuizTab/>}
       {tab === 'flash' && <FlashcardsTab/>}
       {tab === 'mine' && <MyQuizTab/>}
-      {tab === 'vocab' && window.CapVocab && <window.CapVocab/>}
+      {tab === 'vocab' && <VocabTab/>}
       {tab === 'temp' && <TemperaturesTab/>}
       {tab === 'photo' && <PhotoQuizTab/>}
     </div>
