@@ -1,4 +1,4 @@
-/* Recipe Detail + Editor + ChefFridge screens */
+/* Recipe Detail + Editor + ChefFridge + ChefChat — refonte épurée */
 
 const { useState: useS2, useEffect: useE2, useRef: useR2 } = React;
 
@@ -12,20 +12,17 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
     try {
       const out = await window.AI.refineRecipe(recipe);
       if (!out || !out.ingredients || !out.steps) throw new Error('format invalide');
-      const updated = {
+      onUpdate({
         ...recipe,
         title: out.title || recipe.title,
         ingredients: out.ingredients,
         steps: out.steps,
         aiRefined: true,
-      };
-      onUpdate(updated);
-      toast('Reformulé en langage pro ✨');
+      });
+      toast('Reformulé en langage pro');
     } catch (e) {
-      toast('IA indisponible — réessaye');
-    } finally {
-      setRefining(false);
-    }
+      toast('IA indisponible');
+    } finally { setRefining(false); }
   }
 
   async function exportPDF() {
@@ -33,11 +30,9 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
     try {
       const node = document.getElementById('recipe-print');
       if (!node) return;
-      // use html2canvas + jsPDF
       const canvas = await window.html2canvas(node, {
-        backgroundColor: '#f7efe1',
-        scale: 2,
-        useCORS: true,
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--paper').trim() || '#f5f0e8',
+        scale: 2, useCORS: true,
       });
       const img = canvas.toDataURL('image/png');
       const { jsPDF } = window.jspdf;
@@ -47,22 +42,17 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
       const ratio = canvas.height / canvas.width;
       const w = pageW - 20;
       const h = w * ratio;
-      let y = 10;
       if (h > pageH - 20) {
         const h2 = pageH - 20;
         const w2 = h2 / ratio;
         pdf.addImage(img, 'PNG', (pageW - w2) / 2, 10, w2, h2);
       } else {
-        pdf.addImage(img, 'PNG', 10, y, w, h);
+        pdf.addImage(img, 'PNG', 10, 10, w, h);
       }
       pdf.save(`${recipe.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
-      toast('PDF téléchargé !');
-    } catch (e) {
-      console.error(e);
-      toast('Export échoué');
-    } finally {
-      setExporting(false);
-    }
+      toast('PDF téléchargé');
+    } catch (e) { console.error(e); toast('Export échoué'); }
+    finally { setExporting(false); }
   }
 
   return (
@@ -70,34 +60,34 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
       <div className="topbar" style={{ paddingTop: 14 }}>
         <button className="back" onClick={onBack}>{Icon.back}</button>
         <div style={{ flex: 1 }}/>
-        <button className="back" onClick={() => onToggleFav(recipe)} title="Favori"
-          style={{ color: recipe.favorite ? 'var(--rose-deep)' : 'var(--ink-soft)' }}>
+        <button className="back" onClick={() => onToggleFav(recipe)}
+          style={{ color: recipe.favorite ? 'var(--accent)' : 'var(--ink-3)' }}>
           {recipe.favorite ? Icon.heart : Icon.heartO}
         </button>
-        <button className="back" onClick={() => onEdit(recipe)} title="Éditer">{Icon.edit}</button>
+        <button className="back" onClick={() => onEdit(recipe)}>{Icon.edit}</button>
       </div>
 
-      <div className="no-print" style={{ display:'flex', gap: 8, marginBottom: 12 }}>
-        <button className="btn btn-mint" onClick={refine} disabled={refining} style={{ flex: 1 }}>
+      <div className="no-print" style={{ display:'flex', gap: 8, marginBottom: 14 }}>
+        <button className="btn btn-primary" onClick={refine} disabled={refining} style={{ flex: 1 }}>
           {refining ? <><span className="spin"/> Reformulation…</> : <>{Icon.sparkles} Vocabulaire pro</>}
         </button>
-        <button className="btn btn-ghost" onClick={exportPDF} disabled={exporting} title="Exporter PDF">
-          {exporting ? <span className="spin" style={{borderColor:'rgba(0,0,0,.2)', borderTopColor:'var(--ink)'}}/> : Icon.download}
+        <button className="btn btn-ghost" onClick={exportPDF} disabled={exporting}>
+          {exporting ? <span className="spin" style={{borderColor:'rgba(0,0,0,.15)', borderTopColor:'var(--ink)'}}/> : Icon.download}
         </button>
       </div>
 
       {recipe.aiRefined && (
-        <div className="ai-banner no-print" style={{ marginBottom: 12 }}>
-          <span style={{ color: 'var(--rose-deep)' }}>{Icon.sparkles}</span>
-          Modifiée par IA — vocabulaire technique CAP
+        <div className="ai-banner no-print" style={{ marginBottom: 14 }}>
+          <span className="dot"/>
+          Reformulée IA — vocabulaire technique CAP
         </div>
       )}
 
       <RecipePage recipe={recipe} forPrint />
 
-      <div className="no-print" style={{ marginTop: 16, display:'flex', justifyContent:'center' }}>
+      <div className="no-print" style={{ marginTop: 18, display:'flex', justifyContent:'center' }}>
         <button className="btn btn-ghost" onClick={() => { if (confirm('Supprimer cette recette ?')) onDelete(recipe); }}
-          style={{ color: 'var(--berry)' }}>
+          style={{ color: 'var(--accent)', borderColor: 'transparent' }}>
           {Icon.trash} Supprimer
         </button>
       </div>
@@ -119,7 +109,6 @@ function RecipeEditor({ recipe, onCancel, onSave }) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      // resize to ~600px max for storage
       const img = new Image();
       img.onload = () => {
         const max = 600;
@@ -137,7 +126,6 @@ function RecipeEditor({ recipe, onCancel, onSave }) {
   const setIng = (i, v) => setIngredients(arr => arr.map((x, idx) => idx === i ? v : x));
   const addIng = () => setIngredients(arr => [...arr, '']);
   const rmIng = (i) => setIngredients(arr => arr.filter((_, idx) => idx !== i));
-
   const setStep = (i, v) => setSteps(arr => arr.map((x, idx) => idx === i ? v : x));
   const addStep = () => setSteps(arr => [...arr, '']);
   const rmStep = (i) => setSteps(arr => arr.filter((_, idx) => idx !== i));
@@ -152,10 +140,8 @@ function RecipeEditor({ recipe, onCancel, onSave }) {
       id: recipe?.id || window.uid(),
       title: title.trim(),
       category,
-      ingredients: ing,
-      steps: stp,
-      note: note.trim(),
-      photo: photo || '',
+      ingredients: ing, steps: stp,
+      note: note.trim(), photo: photo || '',
       createdAt: recipe?.createdAt || Date.now(),
       rating: recipe?.rating ?? 5,
       favorite: recipe?.favorite ?? false,
@@ -163,72 +149,85 @@ function RecipeEditor({ recipe, onCancel, onSave }) {
     });
   }
 
+  const SectionLabel = ({ children, count }) => (
+    <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom: 10 }}>
+      <div className="display" style={{ fontSize: 22, fontStyle: 'italic' }}>{children}</div>
+      {count != null && <div className="eyebrow">{count}</div>}
+    </div>
+  );
+
   return (
     <div className="screen pop" style={{ paddingTop: 0 }}>
       <div className="topbar">
         <button className="back" onClick={onCancel}>{Icon.close}</button>
         <h1>{recipe ? 'Modifier' : 'Nouvelle'}</h1>
         <div style={{ flex: 1 }}/>
-        <button className="btn btn-primary" onClick={save} style={{ padding:'8px 14px', fontSize: 14 }}>Enregistrer</button>
+        <button className="btn btn-primary" onClick={save} style={{ padding:'9px 16px', fontSize: 13 }}>Enregistrer</button>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <input className="input script" placeholder="Titre de la recette…" value={title} onChange={e => setTitle(e.target.value)}/>
+      <div style={{ marginBottom: 22 }}>
+        <input className="input display-input" placeholder="Titre de la recette" value={title} onChange={e => setTitle(e.target.value)}/>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ marginBottom: 8 }}><span className="hand-underline">Photo</span></div>
+      <div style={{ marginBottom: 22 }}>
+        <SectionLabel>Photo</SectionLabel>
         <label style={{ display:'block', cursor:'pointer' }}>
           <input type="file" accept="image/*" onChange={pickPhoto} style={{ display:'none' }}/>
           {photo ? (
-            <div style={{ position:'relative', borderRadius: 14, overflow:'hidden', border:'1px solid var(--line)' }}>
+            <div style={{ position:'relative', borderRadius: 'var(--radius)', overflow:'hidden', border:'1px solid var(--line)' }}>
               <img src={photo} alt="" style={{ width:'100%', display:'block', maxHeight: 200, objectFit:'cover' }}/>
-              <button type="button" onClick={(e) => { e.preventDefault(); setPhoto(''); }} className="back" style={{ position:'absolute', top: 8, right: 8, background:'rgba(255,255,255,.9)' }}>{Icon.close}</button>
+              <button type="button" onClick={(e) => { e.preventDefault(); setPhoto(''); }} className="back" style={{ position:'absolute', top: 10, right: 10, background:'var(--paper)' }}>{Icon.close}</button>
             </div>
           ) : (
-            <div style={{ border:'2px dashed var(--line)', borderRadius: 14, padding: 24, textAlign:'center', background:'rgba(255,255,255,.4)' }}>
-              <div style={{ fontFamily:'var(--font-hand)', fontSize: 17, color:'var(--ink-soft)', display:'flex', alignItems:'center', justifyContent:'center', gap: 8 }}>{Icon.camera} Choisir une photo</div>
-              <div style={{ fontFamily:'var(--font-body)', fontSize: 12, color:'var(--ink-faint)', marginTop: 4 }}>de ta recette</div>
+            <div style={{ border:'1px dashed var(--line-2)', borderRadius: 'var(--radius)', padding: 28, textAlign:'center', background:'var(--paper-2)' }}>
+              <div style={{ fontSize: 14, color:'var(--ink-3)', display:'flex', alignItems:'center', justifyContent:'center', gap: 8 }}>
+                {Icon.camera} Choisir une photo
+              </div>
             </div>
           )}
         </label>
       </div>
 
-      <div className="chips" style={{ marginBottom: 16 }}>
-        {window.CATEGORIES.filter(c => c !== 'Tout').map(c => (
-          <button key={c} className={`chip ${category === c ? 'active' : ''}`} onClick={() => setCategory(c)}>{c}</button>
-        ))}
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ marginBottom: 8 }}><span className="hand-underline">Ingrédients</span></div>
-        <div style={{ display:'flex', flexDirection:'column', gap: 6 }}>
-          {ingredients.map((ing, i) => (
-            <div key={i} style={{ display:'flex', gap: 6, alignItems:'center' }}>
-              <input className="input" placeholder="Ex : 200 g de farine" value={ing} onChange={e => setIng(i, e.target.value)}/>
-              {ingredients.length > 1 && <button className="back" onClick={() => rmIng(i)} style={{ flexShrink:0 }}>{Icon.close}</button>}
-            </div>
+      <div style={{ marginBottom: 22 }}>
+        <SectionLabel>Catégorie</SectionLabel>
+        <div className="chips">
+          {window.CATEGORIES.filter(c => c !== 'Tout').map(c => (
+            <button key={c} className={`chip ${category === c ? 'active' : ''}`} onClick={() => setCategory(c)}>{c}</button>
           ))}
-          <button className="btn btn-ghost" onClick={addIng} style={{ alignSelf:'flex-start', fontSize: 13, padding: '8px 14px' }}>{Icon.plus} ingrédient</button>
         </div>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ marginBottom: 8 }}><span className="hand-underline">Préparation</span></div>
-        <div style={{ display:'flex', flexDirection:'column', gap: 6 }}>
+      <div style={{ marginBottom: 22 }}>
+        <SectionLabel count={ingredients.filter(Boolean).length}>Ingrédients</SectionLabel>
+        <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
+          {ingredients.map((ing, i) => (
+            <div key={i} style={{ display:'flex', gap: 8, alignItems:'center' }}>
+              <input className="input" placeholder="200 g de farine" value={ing} onChange={e => setIng(i, e.target.value)}/>
+              {ingredients.length > 1 && <button className="back" onClick={() => rmIng(i)} style={{ flexShrink:0 }}>{Icon.close}</button>}
+            </div>
+          ))}
+          <button className="btn btn-ghost" onClick={addIng} style={{ alignSelf:'flex-start', fontSize: 13 }}>{Icon.plus} ingrédient</button>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 22 }}>
+        <SectionLabel count={steps.filter(Boolean).length}>Préparation</SectionLabel>
+        <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
           {steps.map((s, i) => (
-            <div key={i} style={{ display:'flex', gap: 6, alignItems:'flex-start' }}>
-              <div style={{ fontFamily:'var(--font-script)', fontSize: 22, fontWeight:700, color:'var(--rose-deep)', minWidth: 24, paddingTop: 6 }}>{i+1}.</div>
-              <textarea className="textarea" placeholder="Décris l'étape…" value={s} onChange={e => setStep(i, e.target.value)} rows={2}/>
+            <div key={i} style={{ display:'flex', gap: 8, alignItems:'flex-start' }}>
+              <div style={{ fontFamily:'var(--font-display)', fontStyle:'italic', fontSize: 18, color:'var(--accent)', minWidth: 24, paddingTop: 12 }}>
+                {String(i+1).padStart(2,'0')}
+              </div>
+              <textarea className="textarea" placeholder="Décris l'étape" value={s} onChange={e => setStep(i, e.target.value)} rows={2}/>
               {steps.length > 1 && <button className="back" onClick={() => rmStep(i)} style={{ flexShrink:0 }}>{Icon.close}</button>}
             </div>
           ))}
-          <button className="btn btn-ghost" onClick={addStep} style={{ alignSelf:'flex-start', fontSize: 13, padding: '8px 14px' }}>{Icon.plus} étape</button>
+          <button className="btn btn-ghost" onClick={addStep} style={{ alignSelf:'flex-start', fontSize: 13 }}>{Icon.plus} étape</button>
         </div>
       </div>
 
       <div style={{ marginBottom: 24 }}>
-        <div style={{ marginBottom: 8 }}><span className="hand-underline">Note</span></div>
+        <SectionLabel>Note</SectionLabel>
         <input className="input" placeholder="Petite note perso…" value={note} onChange={e => setNote(e.target.value)}/>
       </div>
     </div>
@@ -254,10 +253,9 @@ function ChefFridge({ onBack, onSave, toast }) {
       const avoid = regen && result ? result.title : null;
       const out = await window.AI.chefFridge(list, avoid);
       setResult(out);
-      if (regen) toast('Nouvelle proposition ✨');
-    } catch (e) {
-      toast('IA indisponible — réessaye');
-    } finally { setLoading(false); }
+      if (regen) toast('Nouvelle proposition');
+    } catch (e) { toast('IA indisponible'); }
+    finally { setLoading(false); }
   }
 
   function saveToRecipes() {
@@ -273,42 +271,38 @@ function ChefFridge({ onBack, onSave, toast }) {
       rating: 5, favorite: false, aiRefined: true,
       createdAt: Date.now(),
     });
-    toast('Sauvegardée dans tes recettes !');
+    toast('Sauvegardée');
   }
-
-  const Illu = window.Illu;
 
   return (
     <div className="screen pop" style={{ paddingTop: 0 }}>
       <div className="topbar">
         <button className="back" onClick={onBack}>{Icon.back}</button>
-        <h1>Chef Frigo</h1>
+        <h1>Chef <span style={{ fontStyle:'italic' }}>Frigo</span></h1>
       </div>
 
       {!result && (
         <>
-          <div style={{ display:'flex', alignItems:'center', gap: 12, marginBottom: 14, padding: 14,
-            background:'linear-gradient(135deg, var(--mint-pale), var(--rose-pale))', borderRadius: 16 }}>
-            <div style={{flexShrink:0}}><Illu.WhiskBowl size={50}/></div>
-            <div style={{ fontFamily:'var(--font-hand)', fontSize: 16, color: 'var(--ink)', lineHeight: 1.3 }}>
-              Liste les ingrédients que tu as.<br/>Le chef IA imagine une recette niveau CAP avec.
-            </div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>Assistant IA</div>
+          <div className="display" style={{ fontSize: 28, marginBottom: 12, lineHeight: 1.05 }}>
+            Liste tes ingrédients,<br/>
+            <span style={{ fontStyle: 'italic', color:'var(--accent)' }}>on imagine la recette.</span>
+          </div>
+          <div style={{ fontSize: 13.5, color:'var(--ink-3)', lineHeight: 1.5, marginBottom: 22 }}>
+            Le chef IA combine ce que tu as et te propose une création niveau CAP.
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ marginBottom: 8 }}><span className="hand-underline">Mon frigo / placard</span></div>
-            <div style={{ display:'flex', flexDirection:'column', gap: 6 }}>
-              {items.map((it, i) => (
-                <div key={i} style={{ display:'flex', gap: 6 }}>
-                  <input className="input" placeholder="Ex : œufs, beurre, chocolat…" value={it} onChange={e => setItem(i, e.target.value)}/>
-                  {items.length > 1 && <button className="back" onClick={() => rmItem(i)} style={{ flexShrink:0 }}>{Icon.close}</button>}
-                </div>
-              ))}
-              <button className="btn btn-ghost" onClick={addItem} style={{ alignSelf:'flex-start', fontSize: 13, padding: '8px 14px' }}>{Icon.plus} ingrédient</button>
-            </div>
+          <div style={{ display:'flex', flexDirection:'column', gap: 8, marginBottom: 18 }}>
+            {items.map((it, i) => (
+              <div key={i} style={{ display:'flex', gap: 8 }}>
+                <input className="input" placeholder="Ex : œufs, beurre, chocolat…" value={it} onChange={e => setItem(i, e.target.value)}/>
+                {items.length > 1 && <button className="back" onClick={() => rmItem(i)} style={{ flexShrink:0 }}>{Icon.close}</button>}
+              </div>
+            ))}
+            <button className="btn btn-ghost" onClick={addItem} style={{ alignSelf:'flex-start', fontSize: 13 }}>{Icon.plus} ingrédient</button>
           </div>
 
-          <button className="btn btn-primary" onClick={go} disabled={loading} style={{ width: '100%' }}>
+          <button className="btn btn-primary" onClick={() => go(false)} disabled={loading} style={{ width: '100%' }}>
             {loading ? <><span className="spin"/> Le chef réfléchit…</> : <>{Icon.sparkles} Générer une recette</>}
           </button>
         </>
@@ -316,23 +310,26 @@ function ChefFridge({ onBack, onSave, toast }) {
 
       {result && (
         <>
-          <div className="ai-banner" style={{ marginBottom: 12 }}>
-            <span style={{ color: 'var(--rose-deep)' }}>{Icon.sparkles}</span>
-            Recette imaginée pour toi — {result.difficulty || 'CAP'} · {result.totalTime || '~30 min'}
+          <div className="ai-banner" style={{ marginBottom: 14 }}>
+            <span className="dot"/>
+            Recette IA · {result.difficulty || 'CAP'} · {result.totalTime || '~30 min'}
           </div>
           <RecipePage recipe={{
             ...result,
-            cuisson: result.totalTime ? [`Temps total : ${result.totalTime}`, `Difficulté : ${result.difficulty || 'CAP'}`] : [],
+            cuisson: [
+              result.totalTime && `Temps : ${result.totalTime}`,
+              result.difficulty && `${result.difficulty}`,
+            ].filter(Boolean),
             note: result.tip,
             rating: 5,
           }} forPrint/>
-          <div style={{ marginTop: 14, display:'flex', gap: 8, flexWrap:'wrap' }}>
-            <button className="btn btn-mint" onClick={() => go(true)} disabled={loading} style={{ flex: '1 1 100%' }}>
-              {loading ? <><span className="spin"/> Le chef ré-imagine…</> : <>{Icon.sparkles} Une autre recette</>}
+          <div style={{ marginTop: 16, display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => go(true)} disabled={loading}>
+              {loading ? <span className="spin" style={{borderTopColor:'var(--ink)'}}/> : <>{Icon.sparkles} Une autre</>}
             </button>
-            <button className="btn btn-ghost" onClick={() => setResult(null)} style={{ flex: 1 }}>Modifier ingrédients</button>
-            <button className="btn btn-primary" onClick={saveToRecipes} style={{ flex: 1.5 }}>
-              {Icon.heart} Sauvegarder
+            <button className="btn btn-ghost" onClick={() => setResult(null)}>Modifier</button>
+            <button className="btn btn-primary" onClick={saveToRecipes} style={{ gridColumn:'1 / -1' }}>
+              {Icon.save} Sauvegarder
             </button>
           </div>
         </>
@@ -341,18 +338,15 @@ function ChefFridge({ onBack, onSave, toast }) {
   );
 }
 
-/* -------- CHEF CLASSIQUE (chat IA) -------- */
+/* -------- CHEF GANACHE (chat IA) -------- */
 function ChefChat({ onBack, toast }) {
   const [messages, setMessages] = useS2([]);
   const [input, setInput] = useS2('');
   const [loading, setLoading] = useS2(false);
   const bottomRef = useR2(null);
   const textareaRef = useR2(null);
-  const Illu = window.Illu;
 
-  useE2(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  useE2(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
 
   async function send() {
     const text = input.trim();
@@ -365,101 +359,76 @@ function ChefChat({ onBack, toast }) {
     try {
       const reply = await window.AI.chat(nextHistory);
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-    } catch (e) {
-      toast('IA indisponible — réessaye');
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { toast('IA indisponible'); }
+    finally { setLoading(false); }
   }
 
   function handleKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   }
 
-  function useSuggestion(s) {
-    setInput(s);
-    textareaRef.current?.focus();
-  }
+  function useSuggestion(s) { setInput(s); textareaRef.current?.focus(); }
 
   const suggestions = [
-    "C'est quoi la différence entre sabler et crémer ?",
+    "Différence entre sabler et crémer ?",
     "Comment réussir une pâte à choux ?",
-    "Pourquoi ma génoise retombe-t-elle ?",
-    "À quelle température tempérer le chocolat noir ?",
-    "Quelle est la règle HACCP pour les crèmes ?",
+    "Pourquoi ma génoise retombe ?",
+    "Tempérage du chocolat noir ?",
   ];
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
-
-      {/* TopBar */}
-      <div className="topbar" style={{ paddingTop:14, flexShrink:0 }}>
+      <div className="topbar" style={{ paddingTop:14, flexShrink:0, borderBottom:'1px solid var(--line)' }}>
         <button className="back" onClick={onBack}>{Icon.back}</button>
         <div style={{ flex:1 }}>
-          <div style={{ fontFamily:'var(--font-script)', fontSize:26, fontWeight:700, lineHeight:1.1 }}>
-            Chef Classique
+          <div className="display" style={{ fontSize:22, lineHeight:1 }}>
+            Chef <span style={{ fontStyle:'italic' }}>Ganache</span>
           </div>
-          <div style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--ink-soft)', fontWeight:600 }}>
-            Questions pâtisserie ✨
-          </div>
+          <div className="eyebrow" style={{ fontSize: 9.5, marginTop: 3 }}>Assistant CAP pâtisserie</div>
         </div>
-        <div style={{ flexShrink:0, opacity:.8 }}><Illu.WhiskBowl size={42}/></div>
       </div>
 
-      {/* Zone messages */}
-      <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 20px', display:'flex', flexDirection:'column', gap:4, background:'var(--rose-pale, #fdf4f4)' }}>
-
-        {/* Message d'accueil */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', marginBottom:6 }}>
-          <span className="chat-label-chef">👨‍🍳 Chef Ganache</span>
+      <div style={{ flex:1, overflowY:'auto', padding:'16px 22px 20px', display:'flex', flexDirection:'column', gap:4, background:'var(--paper)' }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', marginBottom:8 }}>
+          <span className="chat-label-chef">Chef Ganache</span>
           <div className="chat-bubble chat-bubble-chef">
-            Bonjour ! Je suis Chef Ganache 👨‍🍳<br/>
-            Pose-moi toutes tes questions — techniques, recettes, températures, vocabulaire CAP... Je suis là pour t'aider !
+            Bonjour ! Pose-moi tes questions techniques, recettes, températures, vocabulaire CAP — je t'accompagne.
           </div>
         </div>
 
-        {/* Suggestions (visibles uniquement au début) */}
         {messages.length === 0 && (
-          <div style={{ display:'flex', flexDirection:'column', gap:7, marginTop:4, marginBottom:8 }}>
-            <span style={{ fontFamily:'var(--font-hand)', fontSize:12, color:'var(--ink-soft)', marginLeft:2 }}>💡 Suggestions</span>
+          <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:12 }}>
+            <span className="eyebrow" style={{ marginLeft: 2, marginBottom: 4 }}>Suggestions</span>
             {suggestions.map((s, i) => (
-              <button key={i} className="suggestion-chip" onClick={() => useSuggestion(s)}>
-                {s}
-              </button>
+              <button key={i} className="suggestion-chip" onClick={() => useSuggestion(s)}>{s}</button>
             ))}
           </div>
         )}
 
-        {/* Messages */}
         {messages.map((m, i) => {
           const isUser = m.role === 'user';
           const prevRole = i > 0 ? messages[i-1].role : null;
-          const isFirstOfGroup = prevRole !== m.role;
+          const isFirst = prevRole !== m.role;
           return (
             <div key={i} style={{
-              display:'flex',
-              flexDirection:'column',
+              display:'flex', flexDirection:'column',
               alignItems: isUser ? 'flex-end' : 'flex-start',
-              marginTop: isFirstOfGroup ? 10 : 3,
+              marginTop: isFirst ? 12 : 3,
             }}>
-              {!isUser && isFirstOfGroup && (
-                <span className="chat-label-chef">👨‍🍳 Chef Ganache</span>
-              )}
-              <div className={`chat-bubble ${isUser ? 'chat-bubble-user' : 'chat-bubble-chef'}`}
-                style={{ whiteSpace:'pre-wrap' }}>
+              {!isUser && isFirst && <span className="chat-label-chef">Chef Ganache</span>}
+              <div className={`chat-bubble ${isUser ? 'chat-bubble-user' : 'chat-bubble-chef'}`} style={{ whiteSpace:'pre-wrap' }}>
                 {m.content}
               </div>
             </div>
           );
         })}
 
-        {/* Loading */}
         {loading && (
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', marginTop:10 }}>
-            <span className="chat-label-chef">👨‍🍳 Chef Ganache</span>
-            <div className="chat-bubble chat-bubble-chef" style={{ display:'flex', alignItems:'center', gap:9, padding:'13px 18px' }}>
-              <span className="spin" style={{ borderColor:'rgba(58,42,31,.15)', borderTopColor:'var(--rose-deep)', width:16, height:16, flexShrink:0 }}/>
-              <span style={{ fontFamily:'var(--font-body)', fontSize:14, color:'var(--ink-soft)' }}>Chef Ganache réfléchit…</span>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', marginTop:12 }}>
+            <span className="chat-label-chef">Chef Ganache</span>
+            <div className="chat-bubble chat-bubble-chef" style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <span className="spin" style={{ borderColor:'rgba(0,0,0,.15)', borderTopColor:'var(--accent)', width:14, height:14 }}/>
+              <span style={{ fontSize:13.5, color:'var(--ink-3)' }}>réfléchit…</span>
             </div>
           </div>
         )}
@@ -467,31 +436,21 @@ function ChefChat({ onBack, toast }) {
         <div ref={bottomRef}/>
       </div>
 
-      {/* Zone de saisie */}
       <div style={{
         flexShrink:0,
-        padding:'10px 14px calc(14px + env(safe-area-inset-bottom))',
-        borderTop:'1px solid var(--line-soft)',
-        background:'rgba(247,239,225,.97)',
-        backdropFilter:'blur(10px)',
+        padding:'12px 16px calc(14px + env(safe-area-inset-bottom))',
+        borderTop:'1px solid var(--line)',
+        background:'var(--paper-2)',
       }}>
         <div style={{ display:'flex', gap:8, alignItems:'flex-end' }}>
-          <textarea
-            ref={textareaRef}
-            className="textarea"
-            placeholder="Pose ta question à Chef Ganache…"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKey}
+          <textarea ref={textareaRef} className="textarea"
+            placeholder="Pose ta question…"
+            value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
             rows={1}
-            style={{ flex:1, resize:'none', minHeight:44, maxHeight:120, padding:'10px 14px', fontFamily:'var(--font-body)', fontSize:15 }}
-          />
-          <button
-            className="btn btn-primary"
-            onClick={send}
-            disabled={loading || !input.trim()}
-            style={{ padding:'10px 16px', flexShrink:0, height:44 }}>
-            {Icon.sparkles}
+            style={{ flex:1, resize:'none', minHeight:44, maxHeight:120, padding:'11px 14px', fontSize:14.5 }}/>
+          <button className="btn btn-primary" onClick={send} disabled={loading || !input.trim()}
+            style={{ padding:'11px 16px', flexShrink:0, height:44 }}>
+            {Icon.arrowR}
           </button>
         </div>
       </div>
