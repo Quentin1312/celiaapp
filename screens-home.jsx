@@ -3,7 +3,7 @@
 const { useState, useEffect, useMemo, useRef } = React;
 
 /* -------- HOME -------- */
-function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, profile }) {
+function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, openChefChat, profile }) {
   const Illu = window.Illu;
   const recents = [...recipes].sort((a,b)=>b.createdAt-a.createdAt).slice(0,3);
   const favs = recipes.filter(r => r.favorite).length;
@@ -96,6 +96,27 @@ function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, profile }) {
           </div>
         </div>
         <div style={{ color:'var(--rose-deep)', flexShrink:0 }}>{Icon.sparkles}</div>
+      </button>
+
+      {/* Chef Classique CTA */}
+      <button
+        onClick={openChefChat}
+        style={{
+          width:'100%', textAlign:'left', border:'none', cursor:'pointer',
+          background:'linear-gradient(130deg, var(--gold-pale) 0%, var(--cream) 55%, var(--paper-warm) 100%)',
+          borderRadius: 20, padding: '16px 20px', marginBottom: 22,
+          boxShadow: '0 1px 0 rgba(255,255,255,.9) inset, 0 4px 18px rgba(58,42,31,.08)',
+          display:'flex', alignItems:'center', gap:14,
+          outline: '1px solid var(--line-soft)',
+        }}>
+        <div style={{flexShrink:0, fontSize:36, lineHeight:1}}>👨‍🍳</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily:'var(--font-script)', fontSize:26, fontWeight:700, color:'var(--ink)', lineHeight:1 }}>Chef Classique</div>
+          <div style={{ fontFamily:'var(--font-hand)', fontSize:14, color:'var(--ink-soft)', marginTop:5, lineHeight:1.35 }}>
+            Pose tes questions pâtisserie<br/>à notre chef IA
+          </div>
+        </div>
+        <div style={{ color:'var(--gold)', flexShrink:0 }}>{Icon.sparkles}</div>
       </button>
 
       {/* Recents */}
