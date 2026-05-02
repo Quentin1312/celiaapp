@@ -5,7 +5,7 @@ const { useState: useS2, useEffect: useE2, useRef: useR2 } = React;
 /* -------- RECIPE DETAIL -------- */
 function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate, toast }) {
   const [refining, setRefining] = useS2(false);
-  const [exporting, setExporting] = useS2(false);
+  const [showFiche, setShowFiche] = useS2(false);
 
   async function refine() {
     setRefining(true);
@@ -25,36 +25,6 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
     } finally { setRefining(false); }
   }
 
-  async function exportPDF() {
-    setExporting(true);
-    try {
-      const node = document.getElementById('recipe-print');
-      if (!node) return;
-      const canvas = await window.html2canvas(node, {
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--paper').trim() || '#f5f0e8',
-        scale: 2, useCORS: true,
-      });
-      const img = canvas.toDataURL('image/png');
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const ratio = canvas.height / canvas.width;
-      const w = pageW - 20;
-      const h = w * ratio;
-      if (h > pageH - 20) {
-        const h2 = pageH - 20;
-        const w2 = h2 / ratio;
-        pdf.addImage(img, 'PNG', (pageW - w2) / 2, 10, w2, h2);
-      } else {
-        pdf.addImage(img, 'PNG', 10, 10, w, h);
-      }
-      pdf.save(`${recipe.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
-      toast('PDF téléchargé');
-    } catch (e) { console.error(e); toast('Export échoué'); }
-    finally { setExporting(false); }
-  }
-
   return (
     <div className="screen pop" style={{ paddingTop: 0 }}>
       <div className="topbar" style={{ paddingTop: 14 }}>
@@ -71,8 +41,8 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
         <button className="btn btn-primary" onClick={refine} disabled={refining} style={{ flex: 1 }}>
           {refining ? <><span className="spin"/> Reformulation…</> : <>{Icon.sparkles} Vocabulaire pro</>}
         </button>
-        <button className="btn btn-ghost" onClick={exportPDF} disabled={exporting}>
-          {exporting ? <span className="spin" style={{borderColor:'rgba(0,0,0,.15)', borderTopColor:'var(--ink)'}}/> : Icon.download}
+        <button className="btn btn-ghost" onClick={() => setShowFiche(true)}>
+          {Icon.download}
         </button>
       </div>
 
@@ -91,6 +61,8 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
           {Icon.trash} Supprimer
         </button>
       </div>
+
+      {showFiche && <FicheModal recipe={recipe} onClose={() => setShowFiche(false)} toast={toast}/>}
     </div>
   );
 }
@@ -453,6 +425,334 @@ function ChefChat({ onBack, toast }) {
             {Icon.arrowR}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   FICHE CARNET — génération Canvas 2D
+   Police Caveat + effets aquarelle + illustrations SVG + recette complète
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── helpers canvas ──────────────────────────────────────────── */
+function _wrapLines(ctx, text, maxW) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function _rRect(ctx, x, y, w, h, r, fillStyle, strokeStyle, lw = 1.5) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  if (fillStyle) { ctx.fillStyle = fillStyle; ctx.fill(); }
+  if (strokeStyle) { ctx.strokeStyle = strokeStyle; ctx.lineWidth = lw; ctx.stroke(); }
+}
+
+async function _renderIllu(recipe) {
+  const t = (recipe.title || '').toLowerCase();
+  const c = (recipe.category || '').toLowerCase();
+  const k = recipe.illu || '';
+  let Comp;
+  if (k === 'crepe' || t.includes('crêpe') || t.includes('crepe')) Comp = window.Illu.CrepeStack;
+  else if (k === 'cake' || c.includes('entremets') || t.includes('cheesecake')) Comp = window.Illu.WhiskBowl;
+  else if (c.includes('pâtes') || c.includes('viennoiserie')) Comp = window.Illu.PanButter;
+  else if (c.includes('crème')) Comp = window.Illu.WhiskBowl;
+  else Comp = window.Illu.MilkBottle;
+
+  const SIZE = 110;
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:-9999px;left:-9999px;visibility:hidden';
+  document.body.appendChild(div);
+  const root = ReactDOM.createRoot(div);
+  root.render(React.createElement(Comp, { size: SIZE }));
+  await new Promise(r => setTimeout(r, 90));
+  const svgEl = div.querySelector('svg');
+  const svgStr = svgEl ? svgEl.outerHTML : null;
+  root.unmount();
+  document.body.removeChild(div);
+  if (!svgStr) return null;
+  const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const img = await new Promise((res, rej) => {
+    const i = new Image(SIZE, SIZE);
+    i.onload = () => res(i); i.onerror = rej; i.src = url;
+  });
+  URL.revokeObjectURL(url);
+  return { img, size: SIZE };
+}
+
+async function generateFicheCanvas(recipe) {
+  const S = 2; // @2x
+  const LW = 540; // logical width
+  const W = LW * S;
+  const LINE_H = 27 * S;
+  const PAD_L = 54 * S;
+  const PAD_R = 38 * S;
+  const CNTW = W - PAD_L - PAD_R;
+
+  await document.fonts.load(`bold ${40 * S}px Caveat`);
+  await document.fonts.load(`700 ${22 * S}px Caveat`);
+  await document.fonts.load(`400 ${20 * S}px Caveat`);
+
+  const illu = await _renderIllu(recipe).catch(() => null);
+
+  /* ── measure total height ── */
+  const tmp = document.createElement('canvas').getContext('2d');
+  function measureSection(items, fs, numbered) {
+    tmp.font = `400 ${fs}px Caveat`;
+    let h = LINE_H * 1.3 + LINE_H * 0.5; // banner + gap
+    for (const it of (items || [])) {
+      const pre = numbered ? '88. ' : '• ';
+      h += _wrapLines(tmp, pre + it, CNTW - 26 * S).length * LINE_H;
+    }
+    return h;
+  }
+  const ILLU_H = illu ? illu.size * S + 14 * S : 0;
+  const TITLE_H = LINE_H * 3;
+  const CAT_H = recipe.category ? LINE_H * 1.2 : 0;
+  const ING_H  = measureSection(recipe.ingredients, 20 * S, false);
+  const STP_H  = measureSection(recipe.steps,       19 * S, true);
+  const CUI_H  = recipe.cuisson?.length ? measureSection(recipe.cuisson, 19 * S, false) : 0;
+  const RATE_H = LINE_H * 2.8;
+  const TH = 20 * S + ILLU_H + TITLE_H + CAT_H + ING_H + STP_H + CUI_H + RATE_H + 32 * S;
+
+  /* ── create canvas ── */
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = TH;
+  const ctx = cv.getContext('2d');
+
+  /* paper */
+  ctx.fillStyle = '#faf6ef'; ctx.fillRect(0, 0, W, TH);
+
+  /* subtle paper grain */
+  ctx.save(); ctx.globalAlpha = 0.018;
+  for (let i = 0; i < 9000; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? '#8b6a40' : '#c49a6c';
+    ctx.fillRect(Math.random() * W, Math.random() * TH, 1, 1);
+  }
+  ctx.restore();
+
+  /* notebook lines */
+  ctx.strokeStyle = 'rgba(150,195,220,0.45)'; ctx.lineWidth = S;
+  for (let y = 78 * S; y < TH; y += LINE_H) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  /* red margin */
+  ctx.strokeStyle = 'rgba(210,100,85,0.27)'; ctx.lineWidth = 1.5 * S;
+  ctx.beginPath(); ctx.moveTo(42 * S, 0); ctx.lineTo(42 * S, TH); ctx.stroke();
+
+  /* spiral holes */
+  const hN = Math.floor(TH / (56 * S));
+  for (let i = 0; i < hN; i++) {
+    const hx = W - 20 * S, hy = (26 + i * 56) * S;
+    ctx.beginPath(); ctx.ellipse(hx, hy, 7 * S, 9 * S, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(235,225,210,0.6)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(155,115,75,0.45)'; ctx.lineWidth = 2 * S; ctx.stroke();
+  }
+
+  let Y = 20 * S;
+
+  /* illustration */
+  if (illu) {
+    const iw = illu.size * S;
+    ctx.drawImage(illu.img, (W - iw) / 2, Y, iw, iw);
+    Y += iw + 14 * S;
+  }
+
+  /* title banner */
+  ctx.font = `bold ${40 * S}px Caveat`;
+  const tw = ctx.measureText(recipe.title || '').width;
+  const bw = Math.min(tw + 54 * S, CNTW + 24 * S);
+  const bh = 52 * S, bx = (W - bw) / 2, br = 14 * S;
+  ctx.save(); ctx.filter = `blur(${10 * S}px)`;
+  _rRect(ctx, bx - 8, Y, bw + 16, bh, br + 4, 'rgba(253,232,200,0.65)'); ctx.restore();
+  _rRect(ctx, bx, Y, bw, bh, br, 'rgba(253,233,204,0.95)', 'rgba(210,162,97,0.7)', 1.5 * S);
+  ctx.font = `bold ${40 * S}px Caveat`;
+  ctx.fillStyle = '#5c3318'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(recipe.title || '', W / 2, Y + bh / 2);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  Y += bh + 10 * S;
+
+  if (recipe.category) {
+    ctx.font = `400 ${16 * S}px Caveat`;
+    ctx.fillStyle = '#a08060'; ctx.textAlign = 'center';
+    ctx.fillText(recipe.category, W / 2, Y + 14 * S);
+    ctx.textAlign = 'left'; Y += LINE_H * 1.3;
+  }
+
+  /* sections */
+  const SECS = [
+    { items: recipe.ingredients, label: 'Ingrédients', fs: 20*S, numbered: false,
+      fill:'rgba(252,226,225,0.9)', stroke:'rgba(225,130,120,0.65)', text:'#8b3535', preClr:'#e08078' },
+    { items: recipe.steps,       label: 'Préparation', fs: 19*S, numbered: true,
+      fill:'rgba(245,226,200,0.9)', stroke:'rgba(196,154,108,0.7)', text:'#7a4a20', preClr:'#c49a6c' },
+    { items: recipe.cuisson,     label: 'Cuisson',     fs: 19*S, numbered: false,
+      fill:'rgba(255,242,196,0.9)', stroke:'rgba(210,160,20,0.65)', text:'#7a5800', preClr:'#d4a020' },
+  ];
+
+  for (const sec of SECS) {
+    if (!sec.items?.length) continue;
+    /* banner */
+    ctx.font = `bold ${21 * S}px Caveat`;
+    const lw2 = ctx.measureText(sec.label).width + 44 * S;
+    const lh = 36 * S, lx = (W - lw2) / 2;
+    ctx.save(); ctx.filter = `blur(${8 * S}px)`;
+    _rRect(ctx, lx - 6, Y, lw2 + 12, lh, lh / 2, sec.fill.replace('0.9', '0.45')); ctx.restore();
+    _rRect(ctx, lx, Y, lw2, lh, lh / 2, sec.fill, sec.stroke, 1.5 * S);
+    ctx.font = `bold ${21 * S}px Caveat`;
+    ctx.fillStyle = sec.text; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(sec.label, W / 2, Y + lh / 2);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    Y += lh + 8 * S;
+
+    /* items */
+    for (let i = 0; i < sec.items.length; i++) {
+      const pre = sec.numbered ? `${i + 1}. ` : '• ';
+      ctx.font = `bold ${sec.fs + (sec.numbered ? 0 : 2)}px Caveat`;
+      const preW = ctx.measureText(pre).width;
+      const lines = _wrapLines({ measureText: t => { ctx.font = `400 ${sec.fs}px Caveat`; return ctx.measureText(t); } }, sec.items[i], CNTW - preW - 6 * S);
+
+      ctx.fillStyle = sec.preClr;
+      ctx.font = `bold ${sec.fs + (sec.numbered ? 0 : 2)}px Caveat`;
+      ctx.fillText(pre, PAD_L, Y + LINE_H * 0.82);
+
+      ctx.fillStyle = '#3a2a1f';
+      ctx.font = `400 ${sec.fs}px Caveat`;
+      for (let li = 0; li < lines.length; li++)
+        ctx.fillText(lines[li], PAD_L + preW, Y + LINE_H * 0.82 + li * LINE_H);
+      Y += lines.length * LINE_H;
+    }
+    Y += LINE_H * 0.5;
+  }
+
+  /* dashed separator */
+  ctx.save(); ctx.setLineDash([6 * S, 4 * S]);
+  ctx.strokeStyle = 'rgba(196,154,108,0.4)'; ctx.lineWidth = 1.5 * S;
+  ctx.beginPath(); ctx.moveTo(PAD_L, Y + 6 * S); ctx.lineTo(W - PAD_R, Y + 6 * S); ctx.stroke();
+  ctx.restore(); Y += 18 * S;
+
+  /* stars */
+  const rating = Math.max(1, Math.min(5, recipe.rating || 5));
+  ctx.font = `400 ${32 * S}px Caveat`;
+  ctx.fillStyle = '#d4a020'; ctx.textAlign = 'center';
+  ctx.fillText('★'.repeat(rating) + '☆'.repeat(5 - rating), W / 2, Y + LINE_H * 0.9);
+  Y += LINE_H * 1.3;
+
+  /* note */
+  if (recipe.note) {
+    ctx.font = `400 ${18 * S}px Caveat`;
+    ctx.fillStyle = '#8a6a50'; ctx.textAlign = 'center';
+    const noteLines = _wrapLines({ measureText: t => ctx.measureText(t) }, recipe.note, CNTW);
+    for (const nl of noteLines) { ctx.fillText(nl, W / 2, Y + LINE_H * 0.82); Y += LINE_H; }
+  }
+  ctx.textAlign = 'left';
+
+  return cv.toDataURL('image/png');
+}
+
+/* ── Modal ──────────────────────────────────────────────────── */
+function FicheModal({ recipe, onClose, toast }) {
+  const [status, setStatus] = useS2('idle'); // idle | loading | done | error
+  const [imgUrl, setImgUrl]  = useS2(null);
+
+  async function generate() {
+    setStatus('loading');
+    if (imgUrl) { URL.revokeObjectURL(imgUrl); setImgUrl(null); }
+    try {
+      const dataUrl = await generateFicheCanvas(recipe);
+      setImgUrl(dataUrl);
+      setStatus('done');
+    } catch(e) {
+      console.error(e);
+      setStatus('error');
+    }
+  }
+
+  function download() {
+    if (!imgUrl) return;
+    const a = document.createElement('a');
+    a.href = imgUrl;
+    a.download = `${(recipe.title || 'recette').replace(/[^a-z0-9]/gi, '_')}_fiche.png`;
+    a.click();
+    toast('Fiche téléchargée ✓');
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-sheet" onClick={e => e.stopPropagation()}
+        style={{ display:'flex', flexDirection:'column', maxHeight:'92vh' }}>
+        <div className="grabber"/>
+
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 16, flexShrink: 0 }}>
+          <div>
+            <div className="display" style={{ fontSize: 22 }}>Fiche <span style={{fontStyle:'italic'}}>carnet</span></div>
+            <div className="eyebrow" style={{ marginTop: 3 }}>Style aquarelle · recette complète</div>
+          </div>
+          <button className="back" onClick={onClose}>{Icon.close}</button>
+        </div>
+
+        {status === 'idle' && (
+          <div style={{ display:'flex', flexDirection:'column', gap: 14 }}>
+            <div style={{
+              background:'var(--paper-2)', border:'1px solid var(--line)',
+              borderRadius:'var(--radius)', padding:'14px 16px',
+              fontSize: 13.5, color:'var(--ink-3)', lineHeight: 1.6,
+            }}>
+              Génère une fiche <span style={{color:'var(--ink-2)',fontWeight:500}}>style carnet illustré</span> — papier ligné, banderoles aquarelle, illustration food, toute ta recette en police manuscrite. PNG haute résolution.
+            </div>
+            <button className="btn btn-primary" onClick={generate} style={{ width:'100%' }}>
+              {Icon.sparkles} Générer la fiche
+            </button>
+          </div>
+        )}
+
+        {status === 'loading' && (
+          <div style={{ textAlign:'center', padding:'52px 0' }}>
+            <div style={{
+              width: 52, height: 52, borderRadius:'50%',
+              border: `3px solid var(--line-2)`, borderTopColor:'var(--accent)',
+              animation:'rot .85s linear infinite', margin:'0 auto 18px',
+            }}/>
+            <div className="display" style={{ fontSize: 20, marginBottom: 6 }}>Composition en cours…</div>
+            <div style={{ fontSize: 13, color:'var(--ink-3)' }}>Papier · illustrations · mise en page</div>
+          </div>
+        )}
+
+        {status === 'done' && imgUrl && (
+          <div style={{ display:'flex', flexDirection:'column', gap: 12, minHeight: 0 }}>
+            <div style={{ flex:1, overflow:'auto', borderRadius:'var(--radius)', border:'1px solid var(--line)', background:'#faf6ef' }}>
+              <img src={imgUrl} alt="Fiche carnet" style={{ width:'100%', display:'block' }}/>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8, flexShrink: 0 }}>
+              <button className="btn btn-ghost" onClick={generate}>{Icon.sparkles} Régénérer</button>
+              <button className="btn btn-primary" onClick={download}>{Icon.download} Télécharger</button>
+            </div>
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div style={{ display:'flex', flexDirection:'column', gap: 16, alignItems:'center', padding:'36px 0' }}>
+            <div style={{ textAlign:'center', color:'var(--ink-3)' }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>⚠️</div>
+              <div style={{ fontSize: 14 }}>Génération échouée.</div>
+            </div>
+            <button className="btn btn-primary" onClick={generate} style={{ width:'100%' }}>Réessayer</button>
+          </div>
+        )}
       </div>
     </div>
   );
