@@ -277,4 +277,38 @@ Illu.ByCategory = ({ category, size = 64 }) => {
   }
 };
 
+Illu.ChefGanache = ({ size = 44 }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{display:'block'}}>
+    {/* Toque blanche */}
+    <ellipse cx="24" cy="18" rx="12" ry="4" fill={C.white} stroke="#d4c8b0" strokeWidth="1.2"/>
+    <rect x="12" y="4" width="24" height="15" rx="5" fill={C.white} stroke="#d4c8b0" strokeWidth="1.2"/>
+    <path d="M12 12 Q24 16 36 12" fill={C.white} stroke="none"/>
+    {/* Petite ombre sous la toque */}
+    <ellipse cx="24" cy="18.5" rx="11" ry="2" fill="#d4c8b0" opacity=".35"/>
+    {/* Visage */}
+    <ellipse cx="24" cy="31" rx="11.5" ry="10.5" fill="#f5c89e"/>
+    <ellipse cx="24" cy="31" rx="11.5" ry="10.5" stroke="#e4b080" strokeWidth="1"/>
+    {/* Veste de chef */}
+    <path d="M12.5 43 L15 38 L20 41 L24 39 L28 41 L33 38 L35.5 43 Z" fill={C.white} stroke="#d4c8b0" strokeWidth="1"/>
+    <path d="M21 39 L24 43 L27 39" fill="#d4c8b0" opacity=".5" stroke="none"/>
+    {/* Boutons veste */}
+    <circle cx="24" cy="41" r="1" fill="#d4c8b0"/>
+    {/* Sourcils */}
+    <path d="M18.5 26.5 Q20.5 25 22.5 26.5" stroke={C.brown} strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+    <path d="M25.5 26.5 Q27.5 25 29.5 26.5" stroke={C.brown} strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+    {/* Yeux */}
+    <circle cx="21" cy="29.5" r="2" fill={C.ink}/>
+    <circle cx="27" cy="29.5" r="2" fill={C.ink}/>
+    <circle cx="21.7" cy="28.9" r=".7" fill={C.white}/>
+    <circle cx="27.7" cy="28.9" r=".7" fill={C.white}/>
+    {/* Moustache */}
+    <path d="M20 33 Q22 34.5 24 33.5 Q26 34.5 28 33" fill={C.brown} opacity=".75"/>
+    {/* Sourire */}
+    <path d="M19.5 35.5 Q24 39.5 28.5 35.5" stroke="#c4845a" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+    {/* Blush */}
+    <ellipse cx="17" cy="33" rx="2.8" ry="1.6" fill={C.rose} opacity=".25"/>
+    <ellipse cx="31" cy="33" rx="2.8" ry="1.6" fill={C.rose} opacity=".25"/>
+  </svg>
+);
+
 window.Illu = Illu;
