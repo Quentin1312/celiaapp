@@ -465,7 +465,7 @@ async function generateFicheGemini(recipe) {
     let blobUrl;
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 25000);
+      const timer = setTimeout(() => ctrl.abort(), 45000);
       let resp;
       try {
         resp = await fetch(bgUrl, { signal: ctrl.signal });
