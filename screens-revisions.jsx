@@ -1027,10 +1027,12 @@ function RevisionsScreen() {
       if (days < 0 || days > 2) return;
       const key = `notif.${q.id}.${todayStr}`;
       if (localStorage.getItem(key)) return;
-      const label = days === 0 ? "aujourd'hui" : days === 1 ? 'demain' : 'dans 2 jours';
-      new Notification(`Contrôle ${label} — ${q.title}`, {
-        body: 'Ouvre l\'app et regénère un quiz pour t\'entraîner avec de nouvelles questions !',
-      });
+      const messages = days === 0
+        ? { title: `🎂 Le grand jour, c'est aujourd'hui !`, body: `Chef Ganache compte sur toi pour "${q.title}". Allez, un dernier quiz et tu es prêt(e) !` }
+        : days === 1
+        ? { title: `👨‍🍳 Demain c'est le contrôle !`, body: `Chef Ganache te rappelle : "${q.title}" c'est demain. Regénère un quiz ce soir pour arriver au top !` }
+        : { title: `🥐 Dans 2 jours — Chef Ganache veille !`, body: `"${q.title}" approche. Prends 10 minutes pour t'entraîner, Chef Ganache sera fier de toi.` };
+      new Notification(messages.title, { body: messages.body });
       localStorage.setItem(key, '1');
     });
   }, []);
