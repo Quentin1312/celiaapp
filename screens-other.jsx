@@ -222,7 +222,7 @@ function Timers({ onBack }) {
 }
 
 /* -------- PROFILE -------- */
-function ProfileScreen({ profile, setProfile, recipes, onResetSeed, tweaks = { palette: 'default', fonts: 'dm-inter' }, setTweak = () => {} }) {
+function ProfileScreen({ profile, setProfile, recipes, onResetSeed, tweaks = { palette: 'default', fonts: 'dm-inter' }, setTweak = () => {}, user }) {
   const [name, setName] = uS3(profile.name);
   const [level, setLevel] = uS3(profile.level);
   const [photo, setPhoto] = uS3(profile.photo || '');
@@ -425,12 +425,50 @@ function ProfileScreen({ profile, setProfile, recipes, onResetSeed, tweaks = { p
         </div>
       </div>
 
-      <div>
+      <div style={{ marginBottom: 24 }}>
         <div className="eyebrow" style={{ marginBottom: 12 }}>Données</div>
         <button className="btn btn-ghost" onClick={onResetSeed} style={{ width: '100%' }}>
           Recharger les recettes d'exemple
         </button>
       </div>
+
+      {window.FirebaseReady && (
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 12 }}>Connexion</div>
+          {user ? (
+            <div style={{
+              background: 'var(--paper-2)', border: '1px solid var(--line)',
+              borderRadius: 'var(--radius)', padding: '14px 16px',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              {user.photoURL && (
+                <img src={user.photoURL} alt="" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }}/>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user.displayName || user.email}
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--accent)', marginTop: 2 }}>Connectée ✓</div>
+              </div>
+              <button
+                className="btn btn-ghost"
+                onClick={() => window.auth.signOut()}
+                style={{ flexShrink: 0, fontSize: 12, padding: '7px 12px' }}
+              >
+                Déconnexion
+              </button>
+            </div>
+          ) : (
+            <button
+              className="btn btn-primary"
+              onClick={() => window.auth.signInWithPopup(window.googleProvider).catch(e => console.warn(e))}
+              style={{ width: '100%' }}
+            >
+              Se connecter avec Google
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
