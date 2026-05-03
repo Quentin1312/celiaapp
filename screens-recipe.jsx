@@ -460,15 +460,23 @@ async function generateFicheGemini(recipe) {
   );
   const bgUrl = `https://image.pollinations.ai/prompt/${bgPrompt}?width=1080&height=720&model=flux&nologo=true&seed=${Date.now()}`;
 
-  /* fetch en blob pour éviter la restriction canvas cross-origin */
+  /* fetch en blob avec timeout 25 s */
   const bgImg = await (async () => {
     let blobUrl;
     try {
-      const resp = await fetch(bgUrl);
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 25000);
+      let resp;
+      try {
+        resp = await fetch(bgUrl, { signal: ctrl.signal });
+      } finally {
+        clearTimeout(timer);
+      }
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const blob = await resp.blob();
       blobUrl = URL.createObjectURL(blob);
     } catch(e) {
+      if (e.name === 'AbortError') throw new Error('Délai dépassé — le serveur d\'illustration est lent, réessaie');
       throw new Error('Impossible de charger l\'illustration — vérifie ta connexion');
     }
     return new Promise((resolve, reject) => {
@@ -623,14 +631,18 @@ function FicheModal({ recipe, onClose, toast }) {
   const [status, setStatus] = useS2('idle');
   const [imgUrl, setImgUrl] = useS2(null);
   const [errMsg, setErrMsg] = useS2('');
+  const [loadStep, setLoadStep] = useS2(0);
 
   async function generate() {
-    setStatus('loading'); setErrMsg('');
+    setStatus('loading'); setErrMsg(''); setLoadStep(0);
+    const stepTimer = setInterval(() => setLoadStep(s => Math.min(s + 1, 2)), 7000);
     try {
       const dataUrl = await generateFicheGemini(recipe);
+      clearInterval(stepTimer);
       setImgUrl(dataUrl);
       setStatus('done');
     } catch(e) {
+      clearInterval(stepTimer);
       console.error(e);
       setErrMsg(e.message || 'Erreur inconnue');
       setStatus('error');
@@ -676,14 +688,38 @@ function FicheModal({ recipe, onClose, toast }) {
         )}
 
         {status === 'loading' && (
-          <div style={{ textAlign:'center', padding:'52px 0' }}>
+          <div style={{ textAlign:'center', padding:'40px 0' }}>
             <div style={{
               width:52, height:52, borderRadius:'50%',
               border:'3px solid var(--line-2)', borderTopColor:'var(--accent)',
-              animation:'rot .85s linear infinite', margin:'0 auto 18px',
+              animation:'rot .85s linear infinite', margin:'0 auto 20px',
             }}/>
-            <div className="display" style={{ fontSize:20, marginBottom:6 }}>Génération en cours…</div>
-            <div style={{ fontSize:13, color:'var(--ink-3)' }}>Aquarelle IA · composition · texte</div>
+            <div className="display" style={{ fontSize:20, marginBottom:12 }}>Génération en cours…</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8, alignItems:'center' }}>
+              {[
+                'Création de l\'illustration aquarelle…',
+                'Composition de la mise en page…',
+                'Écriture de la recette…',
+              ].map((label, i) => (
+                <div key={i} style={{
+                  display:'flex', alignItems:'center', gap:8,
+                  fontSize:13, color: loadStep >= i ? 'var(--ink-2)' : 'var(--ink-3)',
+                  transition:'color .4s',
+                }}>
+                  <div style={{
+                    width:16, height:16, borderRadius:'50%', flexShrink:0,
+                    background: loadStep > i ? 'var(--accent)' : loadStep === i ? 'var(--accent)' : 'var(--line-2)',
+                    border: loadStep === i ? '2px solid var(--accent)' : '2px solid transparent',
+                    transition:'background .4s',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                  }}>
+                    {loadStep > i && <svg width="8" height="8" viewBox="0 0 8 8"><polyline points="1,4 3,6.5 7,1.5" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+                  </div>
+                  {label}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize:11.5, color:'var(--ink-3)', marginTop:18 }}>Peut prendre jusqu'à 20 secondes</div>
           </div>
         )}
 
