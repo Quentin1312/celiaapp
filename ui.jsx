@@ -27,6 +27,8 @@ const Icon = {
   chevR: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18"/></svg>,
   arrowR: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>,
   clock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>,
+  share: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+  people: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
 };
 
 const TopBar = ({ title, onBack }) => (
@@ -38,11 +40,12 @@ const TopBar = ({ title, onBack }) => (
 
 const BottomNav = ({ tab, setTab }) => {
   const items = [
-    { key: 'home', label: 'Accueil', icon: Icon.home },
-    { key: 'recipes', label: 'Recettes', icon: Icon.book },
-    { key: 'tools', label: 'Outils', icon: Icon.tools },
-    { key: 'cap', label: 'Réviser', icon: Icon.cap },
-    { key: 'profile', label: 'Profil', icon: Icon.user },
+    { key: 'home',      label: 'Accueil',  icon: Icon.home },
+    { key: 'recipes',   label: 'Recettes', icon: Icon.book },
+    { key: 'tools',     label: 'Outils',   icon: Icon.tools },
+    { key: 'cap',       label: 'Réviser',  icon: Icon.cap },
+    { key: 'community', label: 'Amis',     icon: Icon.people },
+    { key: 'profile',   label: 'Profil',   icon: Icon.user },
   ];
   return (
     <nav className="bottom-nav">
