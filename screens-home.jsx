@@ -94,13 +94,7 @@ function HomeScreen({ recipes, setTab, openRecipe, openChefFridge, openChefChat,
           marginBottom: 32,
           display:'flex', alignItems:'center', gap: 14,
         }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: '50%',
-          background: 'var(--accent-bg)',
-          display: 'grid', placeItems: 'center',
-          color: 'var(--accent-ink)',
-          flexShrink: 0,
-        }}>{Icon.sparkles}</div>
+        <div style={{ flexShrink: 0 }}><Illu.ChefGanache size={44}/></div>
         <div style={{ flex: 1 }}>
           <div className="display" style={{ fontSize: 19 }}>
             Chef <span style={{ fontStyle:'italic' }}>Ganache</span>
