@@ -121,6 +121,11 @@ const SEED_RECIPES = [
 
 const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 'Biscuits', 'Pâtes de base'];
 
+/* ---------------- GEMINI ----------------
+   Clé API gratuite sur https://aistudio.google.com/apikey
+   Utilisée pour la génération de fiches illustrées aquarelle */
+const GEMINI_API_KEY = 'AIzaSyDMluZw4RKZfziyaw79Leri-xiaeLMV-Dc';
+
 /* ---------------- AI ----------------
    Clé Groq gratuite sur https://console.groq.com
    14 400 requêtes/jour gratuites */
@@ -287,3 +292,4 @@ window.SEED_RECIPES = SEED_RECIPES;
 window.CATEGORIES = CATEGORIES;
 window.AI = AI;
 window.uid = uid;
+window.GEMINI_API_KEY = GEMINI_API_KEY;
