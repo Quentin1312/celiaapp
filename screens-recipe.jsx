@@ -3,7 +3,7 @@
 const { useState: useS2, useEffect: useE2, useRef: useR2 } = React;
 
 /* -------- RECIPE DETAIL -------- */
-function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate, toast }) {
+function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate, onToggleShare, user, toast }) {
   const [refining, setRefining] = useS2(false);
   const [showFiche, setShowFiche] = useS2(false);
 
@@ -41,6 +41,16 @@ function RecipeDetail({ recipe, onBack, onEdit, onDelete, onToggleFav, onUpdate,
         <button className="btn btn-primary" onClick={refine} disabled={refining} style={{ flex: 1 }}>
           {refining ? <><span className="spin"/> Reformulation…</> : <>{Icon.sparkles} Vocabulaire pro</>}
         </button>
+        {user && (
+          <button
+            className="btn btn-ghost"
+            onClick={() => onToggleShare(recipe)}
+            title={recipe.shared ? 'Retirer de la promo' : 'Partager avec la promo'}
+            style={{ color: recipe.shared ? 'var(--accent)' : undefined }}
+          >
+            {Icon.share}
+          </button>
+        )}
         <button className="btn btn-ghost" onClick={() => setShowFiche(true)}>
           {Icon.download}
         </button>
@@ -465,7 +475,7 @@ async function generateFicheGemini(recipe) {
     let blobUrl;
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 45000);
+      const timer = setTimeout(() => ctrl.abort(), 25000);
       let resp;
       try {
         resp = await fetch(bgUrl, { signal: ctrl.signal });
