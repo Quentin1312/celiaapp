@@ -108,6 +108,7 @@ function QuizPlayer({ questions, title, onExit }) {
   const [picked, setPicked] = rS(null);
   const [done, setDone] = rS(false);
   const cur = questions[idx];
+  const qType = cur?.type || 'mcq';
 
   function pick(i) {
     if (picked !== null) return;
@@ -142,6 +143,48 @@ function QuizPlayer({ questions, title, onExit }) {
 
   const progress = ((idx + (picked !== null ? 1 : 0)) / questions.length) * 100;
 
+  /* ---- couleur commune ---- */
+  function answerStyle(i) {
+    const isCorrect = i === cur.correct, isPicked = picked === i;
+    let bg = 'transparent', border = '1px solid var(--line-2)', color = 'var(--ink)';
+    if (picked !== null) {
+      if (isCorrect) { bg = 'var(--secondary-bg)'; border = '1px solid var(--secondary)'; color = 'var(--secondary)'; }
+      else if (isPicked) { bg = 'var(--accent-bg)'; border = '1px solid var(--accent)'; color = 'var(--accent-ink)'; }
+      else { color = 'var(--ink-4)'; }
+    }
+    return { bg, border, color };
+  }
+
+  /* ---- question text (fill: met ___ en évidence) ---- */
+  function renderQuestion() {
+    if (qType !== 'fill') return <div className="display" style={{ fontSize: 21, lineHeight: 1.25 }}>{cur.q}</div>;
+    const parts = cur.q.split('___');
+    return (
+      <div className="display" style={{ fontSize: 21, lineHeight: 1.4 }}>
+        {parts.map((p, i) => (
+          <span key={i}>
+            {p}
+            {i < parts.length - 1 && (
+              <span style={{
+                display:'inline-block', minWidth: 60,
+                borderBottom: '2px solid var(--accent)',
+                margin: '0 4px', verticalAlign: 'bottom',
+                color:'var(--accent)', fontStyle:'italic', fontSize: 14,
+              }}>?</span>
+            )}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  /* ---- badge type ---- */
+  const typeBadge = qType === 'tf'
+    ? <span className="tag mint" style={{ fontSize: 9.5 }}>Vrai / Faux</span>
+    : qType === 'fill'
+    ? <span className="tag accent" style={{ fontSize: 9.5 }}>Compléter</span>
+    : null;
+
   return (
     <div className="pop">
       <div style={{ display:'flex', alignItems:'center', gap: 12, marginBottom: 14 }}>
@@ -165,43 +208,62 @@ function QuizPlayer({ questions, title, onExit }) {
         background:'var(--paper-2)', border:'1px solid var(--line)',
         borderRadius:'var(--radius-lg)', padding: 22, marginBottom: 14,
       }}>
-        <div className="eyebrow" style={{ fontSize: 9.5, marginBottom: 10 }}>Question {idx+1}</div>
-        <div className="display" style={{ fontSize: 21, lineHeight: 1.25 }}>{cur.q}</div>
+        <div style={{ display:'flex', alignItems:'center', gap: 8, marginBottom: 10 }}>
+          <div className="eyebrow" style={{ fontSize: 9.5 }}>Question {idx+1}</div>
+          {typeBadge}
+        </div>
+        {renderQuestion()}
       </div>
 
-      <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
-        {cur.a.map((opt, i) => {
-          const isCorrect = i === cur.correct;
-          const isPicked = picked === i;
-          let bg = 'transparent', border = '1px solid var(--line-2)', color = 'var(--ink)';
-          if (picked !== null) {
-            if (isCorrect) { bg = 'var(--secondary-bg)'; border = '1px solid var(--secondary)'; color = 'var(--secondary)'; }
-            else if (isPicked) { bg = 'var(--accent-bg)'; border = '1px solid var(--accent)'; color = 'var(--accent-ink)'; }
-            else { color = 'var(--ink-4)'; }
-          }
-          return (
-            <button key={i} onClick={() => pick(i)} disabled={picked !== null}
-              style={{ background: bg, border, color, borderRadius:'var(--radius)',
-                padding:'14px 16px', textAlign:'left',
-                cursor: picked === null ? 'pointer' : 'default',
-                display:'flex', alignItems:'center', gap: 12,
-                fontFamily:'var(--font-body)', fontSize: 14.5,
-                transition: 'all .15s' }}>
-              <span style={{
-                width: 26, height: 26, borderRadius:'50%',
-                border: '1px solid currentColor',
-                fontFamily:'var(--font-display)', fontStyle:'italic',
-                fontSize: 14,
-                display:'grid', placeItems:'center', flexShrink: 0,
-                opacity: 0.7,
-              }}>{['a','b','c','d'][i]}</span>
-              <span style={{ flex: 1, lineHeight: 1.35 }}>{opt}</span>
-              {picked !== null && isCorrect && <span style={{ display:'flex' }}>{Icon.check}</span>}
-              {picked !== null && isPicked && !isCorrect && <span style={{ display:'flex' }}>{Icon.close}</span>}
-            </button>
-          );
-        })}
-      </div>
+      {/* Vrai/Faux — 2 grands boutons côte à côte */}
+      {qType === 'tf' ? (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 10 }}>
+          {cur.a.map((opt, i) => {
+            const { bg, border, color } = answerStyle(i);
+            const isCorrect = i === cur.correct, isPicked = picked === i;
+            return (
+              <button key={i} onClick={() => pick(i)} disabled={picked !== null}
+                style={{ background: bg, border, color,
+                  borderRadius:'var(--radius-lg)', padding: '22px 12px',
+                  cursor: picked === null ? 'pointer' : 'default',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap: 8,
+                  transition: 'all .15s' }}>
+                <span style={{ fontSize: 30, lineHeight: 1 }}>{i === 0 ? '✓' : '✗'}</span>
+                <span style={{ fontFamily:'var(--font-body)', fontWeight: 600, fontSize: 15 }}>{opt}</span>
+                {picked !== null && isCorrect && <span style={{ fontSize: 11, color:'var(--secondary)' }}>Correct</span>}
+                {picked !== null && isPicked && !isCorrect && <span style={{ fontSize: 11, color:'var(--accent-ink)' }}>Incorrect</span>}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        /* MCQ et Fill — liste verticale */
+        <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
+          {cur.a.map((opt, i) => {
+            const { bg, border, color } = answerStyle(i);
+            const isCorrect = i === cur.correct, isPicked = picked === i;
+            return (
+              <button key={i} onClick={() => pick(i)} disabled={picked !== null}
+                style={{ background: bg, border, color, borderRadius:'var(--radius)',
+                  padding:'14px 16px', textAlign:'left',
+                  cursor: picked === null ? 'pointer' : 'default',
+                  display:'flex', alignItems:'center', gap: 12,
+                  fontFamily:'var(--font-body)', fontSize: 14.5,
+                  transition: 'all .15s' }}>
+                <span style={{
+                  width: 26, height: 26, borderRadius:'50%',
+                  border: '1px solid currentColor',
+                  fontFamily:'var(--font-display)', fontStyle:'italic', fontSize: 14,
+                  display:'grid', placeItems:'center', flexShrink: 0, opacity: 0.7,
+                }}>{['a','b','c','d'][i]}</span>
+                <span style={{ flex: 1, lineHeight: 1.35 }}>{opt}</span>
+                {picked !== null && isCorrect && <span style={{ display:'flex' }}>{Icon.check}</span>}
+                {picked !== null && isPicked && !isCorrect && <span style={{ display:'flex' }}>{Icon.close}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {picked !== null && (
         <button className="btn btn-primary" onClick={next} style={{ marginTop: 20, width:'100%' }}>
@@ -487,6 +549,7 @@ function PhotoQuizTab() {
   const [loading, setLoading] = rS(false);
   const [error, setError] = rS('');
   const [pending, setPending] = rS(null);
+  const [pendingDate, setPendingDate] = rS('');
   const [activeQuiz, setActiveQuiz] = rS(null);
 
   function pickPhoto(e) {
@@ -516,26 +579,37 @@ function PhotoQuizTab() {
       if (!result?.questions?.length) throw new Error('Pas de questions générées');
       const thumb = await makeThumb(photo, 200);
       setPending({ ...result, thumb });
+      setPendingDate('');
     } catch (e) {
       setError(e.message || 'Erreur. Vérifie la config IA.');
     } finally { setLoading(false); }
   }
   function saveAndPlay() {
     if (!pending) return;
-    window.Storage.addPhotoQuiz({ title: pending.title, thumb: pending.thumb, questions: pending.questions });
+    window.Storage.addPhotoQuiz({
+      title: pending.title,
+      thumb: pending.thumb,
+      photo: photo,
+      questions: pending.questions,
+      controlDate: pendingDate || null,
+    });
+    if (pendingDate && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
     setActiveQuiz({ title: pending.title, questions: pending.questions });
-    setPending(null); setPhoto('');
+    setPending(null); setPhoto(''); setPendingDate('');
   }
   function discardAndPlay() {
     if (!pending) return;
     setActiveQuiz({ title: pending.title, questions: pending.questions });
-    setPending(null); setPhoto('');
+    setPending(null); setPhoto(''); setPendingDate('');
   }
 
   if (activeQuiz) {
     return <QuizPlayer questions={activeQuiz.questions} title={activeQuiz.title} onExit={() => setActiveQuiz(null)}/>;
   }
   if (pending) {
+    const minDate = new Date().toISOString().slice(0, 10);
     return (
       <div className="pop">
         <div style={{ background:'var(--paper-2)', border:'1px solid var(--line)', borderRadius:'var(--radius-lg)', padding: 22 }}>
@@ -543,7 +617,7 @@ function PhotoQuizTab() {
           <div className="display" style={{ fontSize: 28, marginBottom: 12 }}>
             Quiz <span style={{ fontStyle:'italic', color:'var(--accent)' }}>généré</span>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap: 14, marginBottom: 18 }}>
+          <div style={{ display:'flex', alignItems:'center', gap: 14, marginBottom: 22 }}>
             {pending.thumb && (
               <img src={pending.thumb} alt="" style={{ width: 64, height: 64, objectFit:'cover', borderRadius:'var(--radius)', border:'1px solid var(--line)' }}/>
             )}
@@ -552,13 +626,41 @@ function PhotoQuizTab() {
               <div style={{ fontSize: 12, color:'var(--ink-3)', marginTop: 2 }}>{pending.questions.length} questions</div>
             </div>
           </div>
+
+          {/* Date du contrôle */}
+          <div style={{ marginBottom: 16 }}>
+            <div className="label" style={{ marginBottom: 8, display:'flex', alignItems:'center', gap: 6 }}>
+              {Icon.bell}
+              Date du contrôle
+              <span style={{ color:'var(--ink-4)', fontWeight: 400, fontSize: 11 }}>(optionnel)</span>
+            </div>
+            <input
+              type="date"
+              className="input"
+              min={minDate}
+              value={pendingDate}
+              onChange={e => setPendingDate(e.target.value)}
+            />
+            {pendingDate && (
+              <div style={{
+                marginTop: 8, padding:'10px 12px',
+                background:'var(--accent-bg)', borderRadius:'var(--radius)',
+                fontSize: 12.5, color:'var(--accent-ink)',
+                display:'flex', alignItems:'center', gap: 8,
+              }}>
+                {Icon.bell}
+                Rappel activé — notification 1 et 2 jours avant le contrôle
+              </div>
+            )}
+          </div>
+
           <button className="btn btn-primary" onClick={saveAndPlay} style={{ width:'100%' }}>
             {Icon.save} Sauvegarder et commencer
           </button>
           <button className="btn btn-ghost" onClick={discardAndPlay} style={{ width:'100%', marginTop: 8 }}>
             Jouer sans sauvegarder
           </button>
-          <button onClick={() => { setPending(null); setPhoto(''); }} style={{
+          <button onClick={() => { setPending(null); setPhoto(''); setPendingDate(''); }} style={{
             background:'none', border:'none', cursor:'pointer',
             width:'100%', marginTop: 6, fontSize: 12, color:'var(--ink-4)', padding: 8,
           }}>Annuler</button>
@@ -631,14 +733,86 @@ async function makeThumb(dataUrl, size) {
 /* ================================================================
    MES QUIZ
    ================================================================ */
+function getDayLabel(dateStr) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const exam = new Date(dateStr); exam.setHours(0, 0, 0, 0);
+  const days = Math.round((exam - today) / 86400000);
+  if (days < 0) return null;
+  if (days === 0) return "aujourd'hui";
+  if (days === 1) return 'demain';
+  return `dans ${days} j.`;
+}
+
 function MyQuizTab() {
   const [quizzes, setQuizzes] = rS(() => window.Storage.loadPhotoQuizzes());
   const [active, setActive] = rS(null);
+  const [regenId, setRegenId] = rS(null);
+  const [regenLoading, setRegenLoading] = rS(false);
+  const [regenError, setRegenError] = rS('');
+  const regenFileRef = rR();
+
+  const upcoming = rM(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return quizzes.filter(q => {
+      if (!q.controlDate) return false;
+      const exam = new Date(q.controlDate); exam.setHours(0, 0, 0, 0);
+      const days = Math.round((exam - today) / 86400000);
+      return days >= 0 && days <= 2;
+    });
+  }, [quizzes]);
 
   function del(id) {
     if (!confirm('Supprimer ce quiz ?')) return;
     setQuizzes(window.Storage.deletePhotoQuiz(id));
   }
+
+  async function doRegen(quiz, photoDataUrl) {
+    setRegenLoading(true); setRegenError('');
+    try {
+      const result = await window.AI.regenerateQuiz(photoDataUrl, quiz.questions);
+      if (!result?.questions?.length) throw new Error('Pas de questions générées');
+      const next = window.Storage.updatePhotoQuiz(quiz.id, { questions: result.questions });
+      setQuizzes(next);
+      setActive({ ...quiz, questions: result.questions });
+    } catch (e) {
+      setRegenError(e.message || 'Erreur IA');
+    } finally { setRegenLoading(false); setRegenId(null); }
+  }
+
+  function startRegen(quiz) {
+    if (regenLoading) return;
+    setRegenError('');
+    if (quiz.photo) {
+      setRegenId(quiz.id);
+      doRegen(quiz, quiz.photo);
+    } else {
+      setRegenId(quiz.id);
+      setTimeout(() => regenFileRef.current?.click(), 50);
+    }
+  }
+
+  function onRegenFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) { setRegenId(null); return; }
+    const quiz = quizzes.find(q => q.id === regenId);
+    if (!quiz) { setRegenId(null); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1024;
+        const r = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = img.width * r; c.height = img.height * r;
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        doRegen(quiz, c.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
   if (active) return <QuizPlayer questions={active.questions} title={active.title} onExit={() => setActive(null)}/>;
 
   if (!quizzes.length) {
@@ -655,42 +829,112 @@ function MyQuizTab() {
 
   return (
     <div className="pop" style={{ display:'flex', flexDirection:'column', gap: 8 }}>
-      <div className="eyebrow" style={{ marginBottom: 4 }}>{quizzes.length} quiz · tape pour rejouer</div>
-      {quizzes.map(q => (
-        <div key={q.id} style={{
-          display:'flex', alignItems:'center', gap: 12,
-          background:'var(--paper-2)', border:'1px solid var(--line)',
-          borderRadius:'var(--radius-lg)', padding: 12,
+      {/* Bannière contrôles imminents */}
+      {upcoming.length > 0 && (
+        <div style={{
+          marginBottom: 6,
+          background:'var(--accent-bg)', border:'1px solid var(--accent)',
+          borderRadius:'var(--radius-lg)', padding:'14px 16px',
+          display:'flex', gap: 12, alignItems:'flex-start',
         }}>
-          <button onClick={() => setActive(q)} style={{
-            flex: 1, display:'flex', alignItems:'center', gap: 12,
-            background:'none', border:'none', cursor:'pointer', textAlign:'left', padding: 0,
-          }}>
-            <div style={{
-              width: 60, height: 60, borderRadius:'var(--radius)', flexShrink: 0,
-              backgroundImage: q.thumb ? `url(${q.thumb})` : undefined,
-              backgroundColor: 'var(--paper-3)',
-              backgroundSize:'cover', backgroundPosition:'center',
-              border:'1px solid var(--line)',
-              display:'grid', placeItems:'center',
-              color:'var(--ink-4)',
-            }}>
-              {!q.thumb && Icon.camera}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="display" style={{ fontSize: 19, lineHeight: 1.05, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{q.title}</div>
-              <div style={{ fontSize: 11.5, color:'var(--ink-3)', marginTop: 4 }}>
-                {q.questions?.length || 0} questions
-                <span style={{ margin:'0 6px', color:'var(--ink-4)' }}>·</span>
-                {new Date(q.createdAt).toLocaleDateString('fr-FR')}
+          <div style={{ color:'var(--accent)', display:'flex', marginTop: 1, flexShrink: 0 }}>{Icon.bell}</div>
+          <div>
+            {upcoming.map(q => (
+              <div key={q.id} style={{ fontSize: 13.5, color:'var(--accent-ink)', fontWeight: 500, lineHeight: 1.3 }}>
+                {q.title} — contrôle {getDayLabel(q.controlDate)} !
               </div>
+            ))}
+            <div style={{ fontSize: 12, color:'var(--accent-ink)', opacity: 0.75, marginTop: 4 }}>
+              Regénère un quiz pour t'entraîner avec de nouvelles questions.
             </div>
-          </button>
-          <button onClick={() => del(q.id)} className="back" style={{ flexShrink: 0, color:'var(--ink-4)' }}>
-            {Icon.trash}
-          </button>
+          </div>
         </div>
-      ))}
+      )}
+
+      {regenError && (
+        <div style={{ padding:'10px 14px', background:'var(--accent-bg)', borderRadius:'var(--radius)', fontSize: 13, color:'var(--accent-ink)' }}>
+          {regenError}
+        </div>
+      )}
+
+      <div className="eyebrow" style={{ marginBottom: 4 }}>{quizzes.length} quiz · tape pour rejouer</div>
+
+      {/* Input caché pour re-photo */}
+      <input ref={regenFileRef} type="file" accept="image/*" onChange={onRegenFile} style={{ display:'none' }}/>
+
+      {quizzes.map(q => {
+        const dayLabel = q.controlDate ? getDayLabel(q.controlDate) : null;
+        const isUrgent = dayLabel && (dayLabel === "aujourd'hui" || dayLabel === 'demain');
+        const isRegen = regenId === q.id && regenLoading;
+
+        return (
+          <div key={q.id} style={{
+            background:'var(--paper-2)', border: isUrgent ? '1px solid var(--accent)' : '1px solid var(--line)',
+            borderRadius:'var(--radius-lg)', overflow: 'hidden',
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap: 12, padding: 12 }}>
+              <button onClick={() => setActive(q)} style={{
+                flex: 1, display:'flex', alignItems:'center', gap: 12,
+                background:'none', border:'none', cursor:'pointer', textAlign:'left', padding: 0,
+              }}>
+                <div style={{
+                  width: 60, height: 60, borderRadius:'var(--radius)', flexShrink: 0,
+                  backgroundImage: q.thumb ? `url(${q.thumb})` : undefined,
+                  backgroundColor: 'var(--paper-3)',
+                  backgroundSize:'cover', backgroundPosition:'center',
+                  border:'1px solid var(--line)',
+                  display:'grid', placeItems:'center', color:'var(--ink-4)',
+                }}>
+                  {!q.thumb && Icon.camera}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="display" style={{ fontSize: 18, lineHeight: 1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{q.title}</div>
+                  <div style={{ fontSize: 11.5, color:'var(--ink-3)', marginTop: 3, display:'flex', alignItems:'center', gap: 6, flexWrap:'wrap' }}>
+                    <span>{q.questions?.length || 0} questions</span>
+                    {dayLabel && (
+                      <>
+                        <span style={{ color:'var(--ink-4)' }}>·</span>
+                        <span style={{ color: isUrgent ? 'var(--accent)' : 'var(--ink-3)', fontWeight: isUrgent ? 600 : 400 }}>
+                          contrôle {dayLabel}
+                        </span>
+                      </>
+                    )}
+                    {!dayLabel && (
+                      <>
+                        <span style={{ color:'var(--ink-4)' }}>·</span>
+                        <span>{new Date(q.createdAt).toLocaleDateString('fr-FR')}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </button>
+              <button onClick={() => del(q.id)} className="back" style={{ flexShrink: 0, color:'var(--ink-4)' }}>
+                {Icon.trash}
+              </button>
+            </div>
+
+            {/* Bouton Régénérer */}
+            <div style={{ borderTop:'1px solid var(--line)', padding:'8px 12px' }}>
+              <button
+                onClick={() => startRegen(q)}
+                disabled={regenLoading}
+                style={{
+                  background: 'none', border: 'none', cursor: regenLoading ? 'wait' : 'pointer',
+                  display:'flex', alignItems:'center', gap: 6,
+                  color: 'var(--accent)', fontSize: 12.5, fontWeight: 500,
+                  padding: '4px 0', opacity: regenLoading && regenId !== q.id ? 0.4 : 1,
+                  fontFamily:'var(--font-body)',
+                }}
+              >
+                {isRegen
+                  ? <><span className="spin" style={{ borderTopColor:'var(--accent)', width:13, height:13 }}/> Génération…</>
+                  : <>{Icon.sparkles} Regénérer avec de nouvelles questions{!q.photo && ' (reprendre en photo)'}</>
+                }
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -770,6 +1014,27 @@ function VocabTab() {
    ================================================================ */
 function RevisionsScreen() {
   const [tab, setTab] = rS('quiz');
+
+  rE(() => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const quizzes = window.Storage.loadPhotoQuizzes();
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+    quizzes.forEach(q => {
+      if (!q.controlDate) return;
+      const exam = new Date(q.controlDate); exam.setHours(0, 0, 0, 0);
+      const days = Math.round((exam - today) / 86400000);
+      if (days < 0 || days > 2) return;
+      const key = `notif.${q.id}.${todayStr}`;
+      if (localStorage.getItem(key)) return;
+      const label = days === 0 ? "aujourd'hui" : days === 1 ? 'demain' : 'dans 2 jours';
+      new Notification(`Contrôle ${label} — ${q.title}`, {
+        body: 'Ouvre l\'app et regénère un quiz pour t\'entraîner avec de nouvelles questions !',
+      });
+      localStorage.setItem(key, '1');
+    });
+  }, []);
+
   const tabs = [
     ['quiz', 'Quiz'],
     ['flash', 'Flash'],
