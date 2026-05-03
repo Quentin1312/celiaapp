@@ -622,7 +622,10 @@ async function generateFicheGemini(recipe, hfToken) {
 
 /* ── Modal ──────────────────────────────────────────────────── */
 function FicheModal({ recipe, onClose, toast }) {
-  const [status, setStatus]     = useS2(() => window.getHFKey() ? 'idle' : 'key');
+  const getKey = () => (window.getHFKey ? window.getHFKey() : localStorage.getItem('patisserie.hf.key') || '');
+  const setKey = (k) => { if (window.setHFKey) window.setHFKey(k); else localStorage.setItem('patisserie.hf.key', k.trim()); };
+
+  const [status, setStatus]     = useS2(() => getKey() ? 'idle' : 'key');
   const [imgUrl, setImgUrl]     = useS2(null);
   const [errMsg, setErrMsg]     = useS2('');
   const [keyDraft, setKeyDraft] = useS2('');
@@ -630,13 +633,13 @@ function FicheModal({ recipe, onClose, toast }) {
   function saveKey() {
     const k = keyDraft.trim();
     if (!k) return;
-    window.setHFKey(k);
+    setKey(k);
     setKeyDraft('');
     setStatus('idle');
   }
 
   async function generate() {
-    const key = window.getHFKey();
+    const key = getKey();
     if (!key) { setStatus('key'); return; }
     setStatus('loading'); setErrMsg('');
     try {
@@ -707,7 +710,7 @@ function FicheModal({ recipe, onClose, toast }) {
             <button className="btn btn-primary" onClick={generate} style={{ width:'100%' }}>
               {Icon.sparkles} Générer la fiche
             </button>
-            <button className="btn btn-ghost" onClick={() => { window.setHFKey(''); setStatus('key'); }}
+            <button className="btn btn-ghost" onClick={() => { setKey(''); setStatus('key'); }}
               style={{ fontSize:12, color:'var(--ink-4)' }}>Changer de token</button>
           </div>
         )}
@@ -744,7 +747,7 @@ function FicheModal({ recipe, onClose, toast }) {
               {errMsg && <div style={{ fontSize:12.5, color:'var(--ink-3)', maxWidth:280, margin:'0 auto', lineHeight:1.5 }}>{errMsg}</div>}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%' }}>
-              <button className="btn btn-ghost" onClick={() => { window.setHFKey(''); setStatus('key'); }}>Changer token</button>
+              <button className="btn btn-ghost" onClick={() => { setKey(''); setStatus('key'); }}>Changer token</button>
               <button className="btn btn-primary" onClick={generate}>Réessayer</button>
             </div>
           </div>
