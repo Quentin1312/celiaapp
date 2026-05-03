@@ -431,9 +431,9 @@ function ChefChat({ onBack, toast }) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   FICHE CARNET — HuggingFace FLUX.1-schnell (fond aquarelle IA)
+   FICHE CARNET — Pollinations.ai FLUX (fond aquarelle IA, gratuit)
                 + Canvas 2D (texte recette par-dessus)
-   Token gratuit : huggingface.co/settings/tokens (role: Read)
+   Aucune clé requise — fonctionne sans compte
    ════════════════════════════════════════════════════════════════ */
 
 function _wrapLines(ctx, text, maxW) {
@@ -449,37 +449,35 @@ function _wrapLines(ctx, text, maxW) {
   return lines.length ? lines : [''];
 }
 
-async function generateFicheGemini(recipe, hfToken) {
+async function generateFicheGemini(recipe) {
   const title  = recipe.title || 'Recette';
   const cat    = recipe.category || '';
   const rating = Math.max(1, Math.min(5, recipe.rating || 5));
 
-  /* ── 1. Fond aquarelle via HuggingFace FLUX.1-schnell ── */
-  const bgPrompt = `Soft watercolor illustration, French pastry ${title}${cat ? ' '+cat : ''}, pastel colors cream blush rose warm beige honey gold, botanical watercolor leaf accents, cozy French culinary notebook aesthetic, no text no letters, portrait format, high quality`;
-
-  const hfRes = await fetch(
-    'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
-    {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${hfToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inputs: bgPrompt, parameters: { num_inference_steps: 4 } }),
-    }
+  /* ── 1. Fond aquarelle via Pollinations.ai (FLUX, gratuit, sans clé) ── */
+  const bgPrompt = encodeURIComponent(
+    `soft watercolor illustration French pastry ${title}${cat?' '+cat:''}, pastel cream rose beige gold, botanical leaf accents corners, no text no letters, cozy culinary notebook style`
   );
+  const bgUrl = `https://image.pollinations.ai/prompt/${bgPrompt}?width=1080&height=720&model=flux&nologo=true&seed=${Date.now()}`;
 
-  if (!hfRes.ok) {
-    const err = await hfRes.json().catch(() => ({}));
-    if (hfRes.status === 503) throw new Error('Modèle en chargement, réessaie dans 30s');
-    throw new Error(err?.error || `HuggingFace HTTP ${hfRes.status}`);
-  }
-
-  const blob = await hfRes.blob();
-  const bgDataUrl = await new Promise((res, rej) => {
-    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej;
-    r.readAsDataURL(blob);
-  });
-  const bgImg = await new Promise((res, rej) => {
-    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = bgDataUrl;
-  });
+  /* fetch en blob pour éviter la restriction canvas cross-origin */
+  const bgImg = await (async () => {
+    let blobUrl;
+    try {
+      const resp = await fetch(bgUrl);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const blob = await resp.blob();
+      blobUrl = URL.createObjectURL(blob);
+    } catch(e) {
+      throw new Error('Impossible de charger l\'illustration — vérifie ta connexion');
+    }
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(blobUrl); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('Erreur de chargement image')); };
+      img.src = blobUrl;
+    });
+  })();
 
   /* ── 2. Canvas : fond IA + texte recette par-dessus ── */
   await Promise.all([
@@ -622,28 +620,14 @@ async function generateFicheGemini(recipe, hfToken) {
 
 /* ── Modal ──────────────────────────────────────────────────── */
 function FicheModal({ recipe, onClose, toast }) {
-  const getKey = () => (window.getHFKey ? window.getHFKey() : localStorage.getItem('patisserie.hf.key') || '');
-  const setKey = (k) => { if (window.setHFKey) window.setHFKey(k); else localStorage.setItem('patisserie.hf.key', k.trim()); };
-
-  const [status, setStatus]     = useS2(() => getKey() ? 'idle' : 'key');
-  const [imgUrl, setImgUrl]     = useS2(null);
-  const [errMsg, setErrMsg]     = useS2('');
-  const [keyDraft, setKeyDraft] = useS2('');
-
-  function saveKey() {
-    const k = keyDraft.trim();
-    if (!k) return;
-    setKey(k);
-    setKeyDraft('');
-    setStatus('idle');
-  }
+  const [status, setStatus] = useS2('idle');
+  const [imgUrl, setImgUrl] = useS2(null);
+  const [errMsg, setErrMsg] = useS2('');
 
   async function generate() {
-    const key = getKey();
-    if (!key) { setStatus('key'); return; }
     setStatus('loading'); setErrMsg('');
     try {
-      const dataUrl = await generateFicheGemini(recipe, key);
+      const dataUrl = await generateFicheGemini(recipe);
       setImgUrl(dataUrl);
       setStatus('done');
     } catch(e) {
@@ -676,28 +660,6 @@ function FicheModal({ recipe, onClose, toast }) {
           <button className="back" onClick={onClose}>{Icon.close}</button>
         </div>
 
-        {status === 'key' && (
-          <div style={{ display:'flex', flexDirection:'column', gap: 14 }}>
-            <div style={{
-              background:'var(--paper-2)', border:'1px solid var(--line)',
-              borderRadius:'var(--radius)', padding:'14px 16px',
-              fontSize: 13.5, color:'var(--ink-2)', lineHeight: 1.6,
-            }}>
-              <div style={{ fontWeight:600, marginBottom:5 }}>Token Hugging Face</div>
-              <div style={{ color:'var(--ink-3)' }}>
-                Gratuit sur <span style={{ color:'var(--accent)' }}>huggingface.co/settings/tokens</span> → "New token" → rôle <strong>Read</strong>. Sauvegardé sur cet appareil uniquement.
-              </div>
-            </div>
-            <input className="input" placeholder="hf_…" value={keyDraft}
-              onChange={e => setKeyDraft(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && saveKey()}
-              style={{ fontFamily:'monospace', fontSize:13 }} autoFocus/>
-            <button className="btn btn-primary" onClick={saveKey} disabled={!keyDraft.trim()} style={{ width:'100%' }}>
-              Enregistrer &amp; générer
-            </button>
-          </div>
-        )}
-
         {status === 'idle' && (
           <div style={{ display:'flex', flexDirection:'column', gap: 14 }}>
             <div style={{
@@ -705,13 +667,11 @@ function FicheModal({ recipe, onClose, toast }) {
               borderRadius:'var(--radius)', padding:'14px 16px',
               fontSize: 13.5, color:'var(--ink-3)', lineHeight: 1.6,
             }}>
-              Génère une <span style={{color:'var(--ink-2)',fontWeight:500}}>illustration aquarelle IA</span> du plat en fond, avec toute la recette écrite par-dessus en style carnet.
+              Génère une <span style={{color:'var(--ink-2)',fontWeight:500}}>illustration aquarelle IA</span> du plat en fond, avec toute la recette écrite par-dessus en style carnet. Gratuit, sans clé.
             </div>
             <button className="btn btn-primary" onClick={generate} style={{ width:'100%' }}>
               {Icon.sparkles} Générer la fiche
             </button>
-            <button className="btn btn-ghost" onClick={() => { setKey(''); setStatus('key'); }}
-              style={{ fontSize:12, color:'var(--ink-4)' }}>Changer de token</button>
           </div>
         )}
 
@@ -747,7 +707,7 @@ function FicheModal({ recipe, onClose, toast }) {
               {errMsg && <div style={{ fontSize:12.5, color:'var(--ink-3)', maxWidth:280, margin:'0 auto', lineHeight:1.5 }}>{errMsg}</div>}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%' }}>
-              <button className="btn btn-ghost" onClick={() => { setKey(''); setStatus('key'); }}>Changer token</button>
+              <button className="btn btn-ghost" onClick={onClose}>Fermer</button>
               <button className="btn btn-primary" onClick={generate}>Réessayer</button>
             </div>
           </div>
