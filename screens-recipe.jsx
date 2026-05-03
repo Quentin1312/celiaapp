@@ -432,7 +432,7 @@ function ChefChat({ onBack, toast }) {
 
 /* ════════════════════════════════════════════════════════════════
    FICHE CARNET — Gemini image generation (gratuit)
-   Modèle  : gemini-2.0-flash-preview-image-generation
+   Modèle  : gemini-2.0-flash-exp
    Endpoint: generateContent  (PAS :predict — c'est pour Imagen payant)
    Auth    : ?key=API_KEY  (clé gratuite aistudio.google.com/apikey)
    Réponse : candidates[0].content.parts[].inlineData.data (base64)
@@ -468,7 +468,7 @@ ${cuisList ? `\n7. Golden pill label "Cuisson :" followed by:\n${cuisList}` : ''
 STYLE: Soft pastel watercolor washes (cream, blush rose, warm beige, honey gold). All text legible handwritten style. Botanical leaf watercolor accents in corners. Cozy French culinary school aesthetic. No people. High quality, clean layout.`;
 
   /* ── Appel generateContent (modèle gratuit avec génération d'images) ── */
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
 
   const res = await fetch(url, {
     method: 'POST',
