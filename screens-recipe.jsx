@@ -438,7 +438,7 @@ function ChefChat({ onBack, toast }) {
    Réponse : candidates[0].content.parts[].inlineData.data (base64)
    ════════════════════════════════════════════════════════════════ */
 
-async function generateFicheGemini(recipe) {
+async function generateFicheGemini(recipe, apiKey) {
   const title  = recipe.title || 'Recette';
   const cat    = recipe.category || '';
   const rating = Math.max(1, Math.min(5, recipe.rating || 5));
@@ -468,8 +468,7 @@ ${cuisList ? `\n7. Golden pill label "Cuisson :" followed by:\n${cuisList}` : ''
 STYLE: Soft pastel watercolor washes (cream, blush rose, warm beige, honey gold). All text legible handwritten style. Botanical leaf watercolor accents in corners. Cozy French culinary school aesthetic. No people. High quality, clean layout.`;
 
   /* ── Appel generateContent (modèle gratuit avec génération d'images) ── */
-  const key = apiKey || window.GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${key}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`;
 
   const res = await fetch(url, {
     method: 'POST',
@@ -502,15 +501,26 @@ STYLE: Soft pastel watercolor washes (cream, blush rose, warm beige, honey gold)
 
 /* ── Modal ──────────────────────────────────────────────────── */
 function FicheModal({ recipe, onClose, toast }) {
-  const [status, setStatus] = useS2('idle'); // idle | loading | done | error
-  const [imgUrl, setImgUrl] = useS2(null);
-  const [errMsg, setErrMsg] = useS2('');
+  const [status, setStatus]     = useS2(() => window.getGeminiKey() ? 'idle' : 'key');
+  const [imgUrl, setImgUrl]     = useS2(null);
+  const [errMsg, setErrMsg]     = useS2('');
+  const [keyDraft, setKeyDraft] = useS2('');
+
+  function saveKey() {
+    const k = keyDraft.trim();
+    if (!k) return;
+    window.setGeminiKey(k);
+    setKeyDraft('');
+    setStatus('idle');
+  }
 
   async function generate() {
+    const key = window.getGeminiKey();
+    if (!key) { setStatus('key'); return; }
     setStatus('loading');
     setErrMsg('');
     try {
-      const dataUrl = await generateFicheGemini(recipe);
+      const dataUrl = await generateFicheGemini(recipe, key);
       setImgUrl(dataUrl);
       setStatus('done');
     } catch(e) {
@@ -543,6 +553,37 @@ function FicheModal({ recipe, onClose, toast }) {
           <button className="back" onClick={onClose}>{Icon.close}</button>
         </div>
 
+        {/* ── 1re fois : saisie clé ── */}
+        {status === 'key' && (
+          <div style={{ display:'flex', flexDirection:'column', gap: 14 }}>
+            <div style={{
+              background:'var(--paper-2)', border:'1px solid var(--line)',
+              borderRadius:'var(--radius)', padding:'14px 16px',
+              fontSize: 13.5, color:'var(--ink-2)', lineHeight: 1.6,
+            }}>
+              <div style={{ fontWeight:600, marginBottom:5 }}>Clé API Gemini</div>
+              <div style={{ color:'var(--ink-3)' }}>
+                Obtiens ta clé <strong>gratuite</strong> sur{' '}
+                <span style={{ color:'var(--accent)' }}>aistudio.google.com/apikey</span>
+                . Sauvegardée sur cet appareil uniquement, jamais dans le code.
+              </div>
+            </div>
+            <input
+              className="input"
+              placeholder="AIzaSy…"
+              value={keyDraft}
+              onChange={e => setKeyDraft(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveKey()}
+              style={{ fontFamily:'monospace', fontSize:13, letterSpacing:'0.03em' }}
+              autoFocus
+            />
+            <button className="btn btn-primary" onClick={saveKey} disabled={!keyDraft.trim()} style={{ width:'100%' }}>
+              Enregistrer &amp; générer
+            </button>
+          </div>
+        )}
+
+        {/* ── Prêt ── */}
         {status === 'idle' && (
           <div style={{ display:'flex', flexDirection:'column', gap: 14 }}>
             <div style={{
@@ -550,46 +591,56 @@ function FicheModal({ recipe, onClose, toast }) {
               borderRadius:'var(--radius)', padding:'14px 16px',
               fontSize: 13.5, color:'var(--ink-3)', lineHeight: 1.6,
             }}>
-              Génère une fiche <span style={{color:'var(--ink-2)',fontWeight:500}}>style carnet aquarelle</span> — papier ligné, banderoles, illustration food, recette complète en police manuscrite. PNG portrait IA.
+              Génère une fiche <span style={{color:'var(--ink-2)',fontWeight:500}}>style carnet aquarelle</span> — papier ligné, banderoles, illustration food, recette complète en police manuscrite.
             </div>
             <button className="btn btn-primary" onClick={generate} style={{ width:'100%' }}>
               {Icon.sparkles} Générer la fiche
             </button>
+            <button className="btn btn-ghost" onClick={() => { window.setGeminiKey(''); setStatus('key'); }}
+              style={{ fontSize:12, color:'var(--ink-4)' }}>
+              Changer de clé API
+            </button>
           </div>
         )}
 
+        {/* ── Chargement ── */}
         {status === 'loading' && (
           <div style={{ textAlign:'center', padding:'52px 0' }}>
             <div style={{
-              width: 52, height: 52, borderRadius:'50%',
-              border: '3px solid var(--line-2)', borderTopColor:'var(--accent)',
+              width:52, height:52, borderRadius:'50%',
+              border:'3px solid var(--line-2)', borderTopColor:'var(--accent)',
               animation:'rot .85s linear infinite', margin:'0 auto 18px',
             }}/>
-            <div className="display" style={{ fontSize: 20, marginBottom: 6 }}>Gemini génère ta fiche…</div>
-            <div style={{ fontSize: 13, color:'var(--ink-3)' }}>Aquarelle · mise en page · typographie</div>
+            <div className="display" style={{ fontSize:20, marginBottom:6 }}>Gemini génère ta fiche…</div>
+            <div style={{ fontSize:13, color:'var(--ink-3)' }}>Aquarelle · mise en page · typographie</div>
           </div>
         )}
 
+        {/* ── Résultat ── */}
         {status === 'done' && imgUrl && (
-          <div style={{ display:'flex', flexDirection:'column', gap: 12, minHeight: 0 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:12, minHeight:0 }}>
             <div style={{ flex:1, overflow:'auto', borderRadius:'var(--radius)', border:'1px solid var(--line)', background:'#faf6ef' }}>
               <img src={imgUrl} alt="Fiche carnet" style={{ width:'100%', display:'block' }}/>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8, flexShrink: 0 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, flexShrink:0 }}>
               <button className="btn btn-ghost" onClick={generate}>{Icon.sparkles} Régénérer</button>
               <button className="btn btn-primary" onClick={download}>{Icon.download} Télécharger</button>
             </div>
           </div>
         )}
 
+        {/* ── Erreur ── */}
         {status === 'error' && (
-          <div style={{ display:'flex', flexDirection:'column', gap: 14, alignItems:'center', padding:'28px 0' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:14, alignItems:'center', padding:'28px 0' }}>
             <div style={{ textAlign:'center' }}>
-              <div style={{ fontSize: 36, marginBottom: 10 }}>⚠️</div>
-              <div style={{ fontSize: 14, color:'var(--ink-2)', fontWeight: 600, marginBottom: 6 }}>Génération échouée</div>
-              {errMsg && <div style={{ fontSize: 12.5, color:'var(--ink-3)', maxWidth: 280, margin:'0 auto', lineHeight:1.5 }}>{errMsg}</div>}
+              <div style={{ fontSize:36, marginBottom:10 }}>⚠️</div>
+              <div style={{ fontSize:14, color:'var(--ink-2)', fontWeight:600, marginBottom:6 }}>Génération échouée</div>
+              {errMsg && <div style={{ fontSize:12.5, color:'var(--ink-3)', maxWidth:280, margin:'0 auto', lineHeight:1.5 }}>{errMsg}</div>}
             </div>
-            <button className="btn btn-primary" onClick={generate} style={{ width:'100%' }}>Réessayer</button>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%' }}>
+              <button className="btn btn-ghost" onClick={() => { window.setGeminiKey(''); setStatus('key'); }}>Changer clé</button>
+              <button className="btn btn-primary" onClick={generate}>Réessayer</button>
+            </div>
           </div>
         )}
       </div>
