@@ -168,7 +168,7 @@ html, body {
   letter-spacing: -0.02em;
   line-height: 1;
 }
-.topbar .back {
+.back {
   width: 38px; height: 38px;
   border-radius: 50%;
   background: transparent;
@@ -178,7 +178,7 @@ html, body {
   color: var(--ink);
   transition: background .15s, border-color .15s;
 }
-.topbar .back:hover { background: var(--paper-2); border-color: var(--ink-3); }
+.back:hover { background: var(--paper-2); border-color: var(--ink-3); }
 
 /* ── Bottom nav ── */
 .bottom-nav {
@@ -225,7 +225,7 @@ html, body {
 
 /* default icon sizing */
 .btn svg, .topbar svg, .chip svg, .fab svg { width: 18px; height: 18px; flex-shrink: 0; }
-.topbar .back svg { width: 17px; height: 17px; }
+.back svg { width: 17px; height: 17px; }
 .fab svg { width: 22px; height: 22px; }
 
 /* ── Cards ── */
