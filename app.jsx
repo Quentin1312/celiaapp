@@ -12,10 +12,17 @@ function App() {
   const [tab, setTab] = uSA('home');
   const [recipes, setRecipes] = uSA(() => window.Storage.load() || window.SEED_RECIPES);
   const [profile, setProfile] = uSA(() => window.Storage.loadProfile());
-  const [view, setView] = uSA({ kind: 'tab' }); // tab | recipe | editor | fridge
+  const [view, setView] = uSA({ kind: 'tab' }); // tab | recipe | editor | fridge | chat | community
   const [toastMsg, setToastMsg] = uSA(null);
+  const [user, setUser] = uSA(null);
 
   uEA(() => { window.Storage.save(recipes); }, [recipes]);
+
+  uEA(() => {
+    if (!window.FirebaseReady) return;
+    const unsub = window.auth.onAuthStateChanged(u => setUser(u));
+    return unsub;
+  }, []);
 
   const toast = (m) => setToastMsg(m);
 
@@ -44,6 +51,37 @@ function App() {
   function openChat()  { setView({ kind: 'chat' }); }
   function closeOverlay() { setView({ kind: 'tab' }); }
 
+  async function toggleShare(recipe) {
+    if (!user || !window.FirebaseReady) { toast('Connecte-toi pour partager'); return; }
+    try {
+      const docRef = window.db.collection('publicRecipes').doc(recipe.id);
+      if (recipe.shared) {
+        await docRef.delete();
+        updateRecipe({ ...recipe, shared: false });
+        toast('Recette retirée de la promo');
+      } else {
+        await docRef.set({
+          id: recipe.id,
+          title: recipe.title,
+          category: recipe.category,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          cuisson: recipe.cuisson || [],
+          note: recipe.note || '',
+          rating: recipe.rating || 0,
+          aiRefined: recipe.aiRefined || false,
+          authorUid: user.uid,
+          authorName: profile.name || user.displayName || 'Anonyme',
+          sharedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        updateRecipe({ ...recipe, shared: true });
+        toast('Partagée avec la promo !');
+      }
+    } catch (e) {
+      toast('Erreur : ' + e.message);
+    }
+  }
+
   function saveRecipe(r) {
     setRecipes(arr => {
       const exists = arr.find(x => x.id === r.id);
@@ -57,6 +95,9 @@ function App() {
     setRecipes(arr => arr.map(x => x.id === r.id ? r : x));
   }
   function deleteRecipe(r) {
+    if (r.shared && window.FirebaseReady) {
+      window.db.collection('publicRecipes').doc(r.id).delete().catch(console.warn);
+    }
     setRecipes(arr => arr.filter(x => x.id !== r.id));
     setView({ kind: 'tab' });
     setTab('recipes');
@@ -89,6 +130,8 @@ function App() {
           onDelete={deleteRecipe}
           onToggleFav={toggleFav}
           onUpdate={updateRecipe}
+          onToggleShare={toggleShare}
+          user={user}
           toast={toast}
         />
         {toastMsg && <window.Toast msg={toastMsg} onDone={() => setToastMsg(null)}/>}
@@ -126,7 +169,8 @@ function App() {
       {tab === 'recipes' && <window.RecipesScreen recipes={recipes} openRecipe={openRecipe} openEditor={openEditor}/>}
       {tab === 'tools' && <window.ToolsScreen/>}
       {tab === 'cap' && <window.RevisionsScreen/>}
-      {tab === 'profile' && <window.ProfileScreen profile={profile} setProfile={setProfile} recipes={recipes} onResetSeed={resetSeed} tweaks={tweaks} setTweak={setTweak}/>}
+      {tab === 'community' && <window.CommunityScreen user={user} toast={toast} onImport={saveRecipe}/>}
+      {tab === 'profile' && <window.ProfileScreen profile={profile} setProfile={setProfile} recipes={recipes} onResetSeed={resetSeed} tweaks={tweaks} setTweak={setTweak} user={user}/>}
       <window.BottomNav tab={tab} setTab={setTab}/>
       {toastMsg && <window.Toast msg={toastMsg} onDone={() => setToastMsg(null)}/>}
 
