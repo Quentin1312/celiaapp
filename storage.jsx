@@ -2,8 +2,8 @@
 
 const STORAGE_KEY = 'patisserie.recipes.v1';
 const PROFILE_KEY = 'patisserie.profile.v1';
-const QUIZBANK_KEY = 'patisserie.quizbank.v1';
-const PHOTOQUIZ_KEY = 'patisserie.photoquiz.v1';
+const QUIZBANK_KEY = 'patisserie.quizbank.v1';   // quiz IA générés
+const PHOTOQUIZ_KEY = 'patisserie.photoquiz.v1'; // quiz issus de photos
 
 const Storage = {
   load() {
@@ -24,6 +24,7 @@ const Storage = {
   },
   saveProfile(p) { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); },
 
+  /* ---- IA-generated quiz pool (questions individuelles, pas un quiz nommé) ---- */
   loadQuizBank() {
     try { return JSON.parse(localStorage.getItem(QUIZBANK_KEY)) || []; }
     catch (e) { return []; }
@@ -36,6 +37,7 @@ const Storage = {
     return next;
   },
 
+  /* ---- Photo-quiz library (quiz nommés issus d'une photo de fiche) ---- */
   loadPhotoQuizzes() {
     try { return JSON.parse(localStorage.getItem(PHOTOQUIZ_KEY)) || []; }
     catch (e) { return []; }
@@ -120,13 +122,13 @@ const SEED_RECIPES = [
 const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 'Biscuits', 'Pâtes de base'];
 
 /* ---------------- GEMINI ----------------
-   Clé stockée en localStorage — jamais dans le code */
-const GEMINI_KEY_STORAGE = 'patisserie.gemini.key';
-window.getGeminiKey = () => localStorage.getItem(GEMINI_KEY_STORAGE) || '';
-window.setGeminiKey = (k) => localStorage.setItem(GEMINI_KEY_STORAGE, k.trim());
+   Clé API gratuite sur https://aistudio.google.com/apikey
+   Utilisée pour la génération de fiches illustrées aquarelle */
+const GEMINI_API_KEY = 'AIzaSyDMluZw4RKZfziyaw79Leri-xiaeLMV-Dc';
 
 /* ---------------- AI ----------------
-   Clé Groq gratuite sur https://console.groq.com */
+   Clé Groq gratuite sur https://console.groq.com
+   14 400 requêtes/jour gratuites */
 const GROQ_API_KEY = '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';
 const GROQ_MODEL_TEXT  = 'llama-3.3-70b-versatile';
 const GROQ_MODEL_VISION = 'meta-llama/llama-4-scout-17b-16e-instruct';
@@ -276,6 +278,7 @@ Réponds UNIQUEMENT en JSON valide :
 };
 
 function parseJSON(text) {
+  // strip code fences if any, find first { and last }
   let t = text.trim().replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
   const start = t.indexOf('{');
   const end = t.lastIndexOf('}');
@@ -289,3 +292,4 @@ window.SEED_RECIPES = SEED_RECIPES;
 window.CATEGORIES = CATEGORIES;
 window.AI = AI;
 window.uid = uid;
+window.GEMINI_API_KEY = GEMINI_API_KEY;
