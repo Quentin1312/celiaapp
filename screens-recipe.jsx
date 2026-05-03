@@ -431,77 +431,198 @@ function ChefChat({ onBack, toast }) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   FICHE CARNET — Gemini image generation (gratuit)
-   Modèle  : gemini-3.1-flash-image-preview
-   Endpoint: generateContent  (PAS :predict — c'est pour Imagen payant)
-   Auth    : ?key=API_KEY  (clé gratuite aistudio.google.com/apikey)
-   Réponse : candidates[0].content.parts[].inlineData.data (base64)
+   FICHE CARNET — HuggingFace FLUX.1-schnell (fond aquarelle IA)
+                + Canvas 2D (texte recette par-dessus)
+   Token gratuit : huggingface.co/settings/tokens (role: Read)
    ════════════════════════════════════════════════════════════════ */
 
-async function generateFicheGemini(recipe, apiKey) {
+function _wrapLines(ctx, text, maxW) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+async function generateFicheGemini(recipe, hfToken) {
   const title  = recipe.title || 'Recette';
   const cat    = recipe.category || '';
   const rating = Math.max(1, Math.min(5, recipe.rating || 5));
-  const stars  = '★'.repeat(rating) + '☆'.repeat(5 - rating);
 
-  const ingList  = (recipe.ingredients || []).map(i => `• ${i}`).join('\n');
-  const stepList = (recipe.steps || []).map((s, idx) => `${idx + 1}. ${s}`).join('\n');
-  const cuisList = (recipe.cuisson || []).map(c => `• ${c}`).join('\n');
+  /* ── 1. Fond aquarelle via HuggingFace FLUX.1-schnell ── */
+  const bgPrompt = `Soft watercolor illustration, French pastry ${title}${cat ? ' '+cat : ''}, pastel colors cream blush rose warm beige honey gold, botanical watercolor leaf accents, cozy French culinary notebook aesthetic, no text no letters, portrait format, high quality`;
 
-  /* ── Prompt ─────────────────────────────────────────────────── */
-  const prompt = `A beautiful watercolor recipe card in the style of a French pastry student handwritten notebook. Portrait orientation, tall format.
+  const hfRes = await fetch(
+    'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
+    {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${hfToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: bgPrompt, parameters: { num_inference_steps: 4 } }),
+    }
+  );
 
-LAYOUT from top to bottom:
-1. Cream/ivory notebook paper background with soft horizontal blue ruled lines and a red vertical margin line on the left edge
-2. Top center: a delicate kawaii-style watercolor food illustration of "${title}" (small, cute, detailed)
-3. A decorative golden oval ribbon banner containing the handwritten title: "${title}"${cat ? `\n4. Small elegant subtitle: "${cat}"` : ''}
-5. Pink rounded pill label "Ingrédients :" followed by this list in handwritten style:
-${ingList}
+  if (!hfRes.ok) {
+    const err = await hfRes.json().catch(() => ({}));
+    if (hfRes.status === 503) throw new Error('Modèle en chargement, réessaie dans 30s');
+    throw new Error(err?.error || `HuggingFace HTTP ${hfRes.status}`);
+  }
 
-6. Warm beige rounded pill label "Préparation :" followed by these numbered steps in handwriting:
-${stepList}
-${cuisList ? `\n7. Golden pill label "Cuisson :" followed by:\n${cuisList}` : ''}
-
-8. A dashed horizontal divider
-9. Gold stars: ${stars}${recipe.note ? `\n10. Italic handwritten note in light brown ink: "${recipe.note}"` : ''}
-
-STYLE: Soft pastel watercolor washes (cream, blush rose, warm beige, honey gold). All text legible handwritten style. Botanical leaf watercolor accents in corners. Cozy French culinary school aesthetic. No people. High quality, clean layout.`;
-
-  /* ── Appel generateContent (modèle gratuit avec génération d'images) ── */
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
-    }),
+  const blob = await hfRes.blob();
+  const bgDataUrl = await new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+  const bgImg = await new Promise((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = bgDataUrl;
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const msg = err?.error?.message || `Erreur HTTP ${res.status}`;
-    throw new Error(msg);
+  /* ── 2. Canvas : fond IA + texte recette par-dessus ── */
+  await Promise.all([
+    document.fonts.load('bold 80px Caveat'),
+    document.fonts.load('700 42px Caveat'),
+    document.fonts.load('400 40px Caveat'),
+  ]);
+
+  const S = 2, LW = 540, W = LW * S;
+  const LINE_H = 27 * S, PAD_L = 54 * S, PAD_R = 38 * S, CNTW = W - PAD_L - PAD_R;
+  const BG_H = 300 * S;
+
+  /* mesure hauteur totale */
+  const tmp = document.createElement('canvas').getContext('2d');
+  function measureSec(items, fs) {
+    tmp.font = `400 ${fs}px Caveat`;
+    let h = LINE_H * 1.8;
+    for (const it of (items || [])) h += _wrapLines(tmp, '88. ' + it, CNTW - 26*S).length * LINE_H;
+    return h;
+  }
+  const TH = BG_H
+    + (recipe.category ? LINE_H*1.3 : 0)
+    + LINE_H * 2.5
+    + measureSec(recipe.ingredients, 20*S)
+    + measureSec(recipe.steps, 19*S)
+    + (recipe.cuisson?.length ? measureSec(recipe.cuisson, 19*S) : 0)
+    + LINE_H * 3.5
+    + (recipe.note ? LINE_H * 2 : 0)
+    + 32*S;
+
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = TH;
+  const ctx = cv.getContext('2d');
+
+  /* fond aquarelle IA */
+  ctx.drawImage(bgImg, 0, 0, W, BG_H + 80*S);
+
+  /* fondu image → papier */
+  const grad = ctx.createLinearGradient(0, BG_H - 100*S, 0, BG_H + 20*S);
+  grad.addColorStop(0, 'rgba(250,246,239,0)');
+  grad.addColorStop(1, 'rgba(250,246,239,1)');
+  ctx.fillStyle = grad; ctx.fillRect(0, BG_H - 100*S, W, 120*S);
+
+  /* zone papier */
+  ctx.fillStyle = '#faf6ef'; ctx.fillRect(0, BG_H, W, TH - BG_H);
+
+  /* lignes carnet */
+  ctx.strokeStyle = 'rgba(150,195,220,0.35)'; ctx.lineWidth = S;
+  for (let y = BG_H + LINE_H; y < TH; y += LINE_H) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  /* marge rouge */
+  ctx.strokeStyle = 'rgba(210,100,85,0.22)'; ctx.lineWidth = 1.5*S;
+  ctx.beginPath(); ctx.moveTo(42*S, BG_H); ctx.lineTo(42*S, TH); ctx.stroke();
+
+  function rRect(x, y, w, h, r, fill, stroke) {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5*S; ctx.stroke(); }
   }
 
-  const data  = await res.json();
-  const parts = data?.candidates?.[0]?.content?.parts || [];
-  const imgPart = parts.find(p => p.inlineData?.data);
+  let Y = BG_H - 36*S;
 
-  if (!imgPart) {
-    /* debug : affiche ce qu'on a reçu */
-    console.error('Réponse Gemini complète :', JSON.stringify(data, null, 2));
-    throw new Error('Aucune image dans la réponse — vérifie que ton modèle supporte la génération d\'images');
+  /* bandeau titre */
+  ctx.font = `bold ${40*S}px Caveat`;
+  const tw = ctx.measureText(title).width;
+  const bw = Math.min(tw + 54*S, CNTW + 24*S), bh = 52*S, bx = (W-bw)/2;
+  ctx.save(); ctx.shadowColor='rgba(0,0,0,0.18)'; ctx.shadowBlur=12*S; ctx.shadowOffsetY=3*S;
+  rRect(bx, Y, bw, bh, 14*S, 'rgba(253,233,204,0.97)', 'rgba(210,162,97,0.8)');
+  ctx.restore();
+  ctx.fillStyle='#5c3318'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(title, W/2, Y+bh/2);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  Y += bh + 14*S;
+
+  if (cat) {
+    ctx.font=`400 ${16*S}px Caveat`; ctx.fillStyle='#a08060'; ctx.textAlign='center';
+    ctx.fillText(cat, W/2, Y+14*S); ctx.textAlign='left'; Y += LINE_H*1.3;
   }
 
-  const { mimeType, data: b64 } = imgPart.inlineData;
-  return `data:${mimeType};base64,${b64}`;
+  const SECS = [
+    { items: recipe.ingredients, label:'Ingrédients', fs:20*S, num:false, fill:'rgba(252,226,225,0.92)', stroke:'rgba(225,130,120,0.7)', text:'#8b3535', pre:'#e08078' },
+    { items: recipe.steps,       label:'Préparation', fs:19*S, num:true,  fill:'rgba(245,226,200,0.92)', stroke:'rgba(196,154,108,0.75)', text:'#7a4a20', pre:'#c49a6c' },
+    { items: recipe.cuisson,     label:'Cuisson',     fs:19*S, num:false, fill:'rgba(255,242,196,0.92)', stroke:'rgba(210,160,20,0.7)',  text:'#7a5800', pre:'#d4a020' },
+  ];
+
+  for (const sec of SECS) {
+    if (!sec.items?.length) continue;
+    ctx.font=`bold ${21*S}px Caveat`;
+    const lw2=ctx.measureText(sec.label).width+44*S, lh=36*S, lx=(W-lw2)/2;
+    ctx.save(); ctx.shadowColor='rgba(0,0,0,0.08)'; ctx.shadowBlur=8*S;
+    rRect(lx, Y, lw2, lh, lh/2, sec.fill, sec.stroke);
+    ctx.restore();
+    ctx.font=`bold ${21*S}px Caveat`; ctx.fillStyle=sec.text;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(sec.label, W/2, Y+lh/2);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    Y += lh + 8*S;
+
+    for (let i=0; i<sec.items.length; i++) {
+      const pre = sec.num ? `${i+1}. ` : '• ';
+      ctx.font=`bold ${sec.fs+(sec.num?0:2)}px Caveat`;
+      const preW=ctx.measureText(pre).width;
+      const lines=_wrapLines({measureText:t=>{ctx.font=`400 ${sec.fs}px Caveat`;return ctx.measureText(t);}}, sec.items[i], CNTW-preW-6*S);
+      ctx.fillStyle=sec.pre; ctx.font=`bold ${sec.fs+(sec.num?0:2)}px Caveat`;
+      ctx.fillText(pre, PAD_L, Y+LINE_H*0.82);
+      ctx.fillStyle='#3a2a1f'; ctx.font=`400 ${sec.fs}px Caveat`;
+      for (let li=0;li<lines.length;li++) ctx.fillText(lines[li], PAD_L+preW, Y+LINE_H*0.82+li*LINE_H);
+      Y += lines.length*LINE_H;
+    }
+    Y += LINE_H*0.5;
+  }
+
+  /* séparateur */
+  ctx.save(); ctx.setLineDash([6*S,4*S]);
+  ctx.strokeStyle='rgba(196,154,108,0.4)'; ctx.lineWidth=1.5*S;
+  ctx.beginPath(); ctx.moveTo(PAD_L,Y+6*S); ctx.lineTo(W-PAD_R,Y+6*S); ctx.stroke();
+  ctx.restore(); Y+=18*S;
+
+  /* étoiles */
+  ctx.font=`400 ${32*S}px Caveat`; ctx.fillStyle='#d4a020'; ctx.textAlign='center';
+  ctx.fillText('★'.repeat(rating)+'☆'.repeat(5-rating), W/2, Y+LINE_H*0.9);
+  Y += LINE_H*1.3;
+
+  /* note */
+  if (recipe.note) {
+    ctx.font=`400 ${18*S}px Caveat`; ctx.fillStyle='#8a6a50'; ctx.textAlign='center';
+    for (const nl of _wrapLines({measureText:t=>ctx.measureText(t)}, recipe.note, CNTW)) {
+      ctx.fillText(nl, W/2, Y+LINE_H*0.82); Y+=LINE_H;
+    }
+  }
+
+  return cv.toDataURL('image/png');
 }
 
 /* ── Modal ──────────────────────────────────────────────────── */
 function FicheModal({ recipe, onClose, toast }) {
-  const [status, setStatus]     = useS2(() => window.getGeminiKey() ? 'idle' : 'key');
+  const [status, setStatus]     = useS2(() => window.getHFKey() ? 'idle' : 'key');
   const [imgUrl, setImgUrl]     = useS2(null);
   const [errMsg, setErrMsg]     = useS2('');
   const [keyDraft, setKeyDraft] = useS2('');
@@ -509,16 +630,15 @@ function FicheModal({ recipe, onClose, toast }) {
   function saveKey() {
     const k = keyDraft.trim();
     if (!k) return;
-    window.setGeminiKey(k);
+    window.setHFKey(k);
     setKeyDraft('');
     setStatus('idle');
   }
 
   async function generate() {
-    const key = window.getGeminiKey();
+    const key = window.getHFKey();
     if (!key) { setStatus('key'); return; }
-    setStatus('loading');
-    setErrMsg('');
+    setStatus('loading'); setErrMsg('');
     try {
       const dataUrl = await generateFicheGemini(recipe, key);
       setImgUrl(dataUrl);
@@ -548,12 +668,11 @@ function FicheModal({ recipe, onClose, toast }) {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 16, flexShrink: 0 }}>
           <div>
             <div className="display" style={{ fontSize: 22 }}>Fiche <span style={{fontStyle:'italic'}}>carnet</span></div>
-            <div className="eyebrow" style={{ marginTop: 3 }}>Gemini · style aquarelle illustré</div>
+            <div className="eyebrow" style={{ marginTop: 3 }}>FLUX · aquarelle IA + recette</div>
           </div>
           <button className="back" onClick={onClose}>{Icon.close}</button>
         </div>
 
-        {/* ── 1re fois : saisie clé ── */}
         {status === 'key' && (
           <div style={{ display:'flex', flexDirection:'column', gap: 14 }}>
             <div style={{
@@ -561,29 +680,21 @@ function FicheModal({ recipe, onClose, toast }) {
               borderRadius:'var(--radius)', padding:'14px 16px',
               fontSize: 13.5, color:'var(--ink-2)', lineHeight: 1.6,
             }}>
-              <div style={{ fontWeight:600, marginBottom:5 }}>Clé API Gemini</div>
+              <div style={{ fontWeight:600, marginBottom:5 }}>Token Hugging Face</div>
               <div style={{ color:'var(--ink-3)' }}>
-                Obtiens ta clé <strong>gratuite</strong> sur{' '}
-                <span style={{ color:'var(--accent)' }}>aistudio.google.com/apikey</span>
-                . Sauvegardée sur cet appareil uniquement, jamais dans le code.
+                Gratuit sur <span style={{ color:'var(--accent)' }}>huggingface.co/settings/tokens</span> → "New token" → rôle <strong>Read</strong>. Sauvegardé sur cet appareil uniquement.
               </div>
             </div>
-            <input
-              className="input"
-              placeholder="AIzaSy…"
-              value={keyDraft}
+            <input className="input" placeholder="hf_…" value={keyDraft}
               onChange={e => setKeyDraft(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && saveKey()}
-              style={{ fontFamily:'monospace', fontSize:13, letterSpacing:'0.03em' }}
-              autoFocus
-            />
+              style={{ fontFamily:'monospace', fontSize:13 }} autoFocus/>
             <button className="btn btn-primary" onClick={saveKey} disabled={!keyDraft.trim()} style={{ width:'100%' }}>
               Enregistrer &amp; générer
             </button>
           </div>
         )}
 
-        {/* ── Prêt ── */}
         {status === 'idle' && (
           <div style={{ display:'flex', flexDirection:'column', gap: 14 }}>
             <div style={{
@@ -591,19 +702,16 @@ function FicheModal({ recipe, onClose, toast }) {
               borderRadius:'var(--radius)', padding:'14px 16px',
               fontSize: 13.5, color:'var(--ink-3)', lineHeight: 1.6,
             }}>
-              Génère une fiche <span style={{color:'var(--ink-2)',fontWeight:500}}>style carnet aquarelle</span> — papier ligné, banderoles, illustration food, recette complète en police manuscrite.
+              Génère une <span style={{color:'var(--ink-2)',fontWeight:500}}>illustration aquarelle IA</span> du plat en fond, avec toute la recette écrite par-dessus en style carnet.
             </div>
             <button className="btn btn-primary" onClick={generate} style={{ width:'100%' }}>
               {Icon.sparkles} Générer la fiche
             </button>
-            <button className="btn btn-ghost" onClick={() => { window.setGeminiKey(''); setStatus('key'); }}
-              style={{ fontSize:12, color:'var(--ink-4)' }}>
-              Changer de clé API
-            </button>
+            <button className="btn btn-ghost" onClick={() => { window.setHFKey(''); setStatus('key'); }}
+              style={{ fontSize:12, color:'var(--ink-4)' }}>Changer de token</button>
           </div>
         )}
 
-        {/* ── Chargement ── */}
         {status === 'loading' && (
           <div style={{ textAlign:'center', padding:'52px 0' }}>
             <div style={{
@@ -611,12 +719,11 @@ function FicheModal({ recipe, onClose, toast }) {
               border:'3px solid var(--line-2)', borderTopColor:'var(--accent)',
               animation:'rot .85s linear infinite', margin:'0 auto 18px',
             }}/>
-            <div className="display" style={{ fontSize:20, marginBottom:6 }}>Gemini génère ta fiche…</div>
-            <div style={{ fontSize:13, color:'var(--ink-3)' }}>Aquarelle · mise en page · typographie</div>
+            <div className="display" style={{ fontSize:20, marginBottom:6 }}>Génération en cours…</div>
+            <div style={{ fontSize:13, color:'var(--ink-3)' }}>Aquarelle IA · composition · texte</div>
           </div>
         )}
 
-        {/* ── Résultat ── */}
         {status === 'done' && imgUrl && (
           <div style={{ display:'flex', flexDirection:'column', gap:12, minHeight:0 }}>
             <div style={{ flex:1, overflow:'auto', borderRadius:'var(--radius)', border:'1px solid var(--line)', background:'#faf6ef' }}>
@@ -629,7 +736,6 @@ function FicheModal({ recipe, onClose, toast }) {
           </div>
         )}
 
-        {/* ── Erreur ── */}
         {status === 'error' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14, alignItems:'center', padding:'28px 0' }}>
             <div style={{ textAlign:'center' }}>
@@ -638,7 +744,7 @@ function FicheModal({ recipe, onClose, toast }) {
               {errMsg && <div style={{ fontSize:12.5, color:'var(--ink-3)', maxWidth:280, margin:'0 auto', lineHeight:1.5 }}>{errMsg}</div>}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%' }}>
-              <button className="btn btn-ghost" onClick={() => { window.setGeminiKey(''); setStatus('key'); }}>Changer clé</button>
+              <button className="btn btn-ghost" onClick={() => { window.setHFKey(''); setStatus('key'); }}>Changer token</button>
               <button className="btn btn-primary" onClick={generate}>Réessayer</button>
             </div>
           </div>
