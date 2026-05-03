@@ -54,6 +54,11 @@ const Storage = {
     Storage.savePhotoQuizzes(next);
     return next;
   },
+  updatePhotoQuiz(id, updates) {
+    const next = Storage.loadPhotoQuizzes().map(q => q.id === id ? { ...q, ...updates } : q);
+    Storage.savePhotoQuizzes(next);
+    return next;
+  },
 };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -120,11 +125,6 @@ const SEED_RECIPES = [
 ];
 
 const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 'Biscuits', 'Pâtes de base'];
-
-/* ---------------- GEMINI ----------------
-   Clé API gratuite sur https://aistudio.google.com/apikey
-   Utilisée pour la génération de fiches illustrées aquarelle */
-const GEMINI_API_KEY = 'AIzaSyDMluZw4RKZfziyaw79Leri-xiaeLMV-Dc';
 
 /* ---------------- AI ----------------
    Clé Groq gratuite sur https://console.groq.com
@@ -244,6 +244,33 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ni après :
     return text;
   },
 
+  async regenerateQuiz(imageDataUrl, existingQuestions) {
+    const seed = Math.random().toString(36).slice(2, 8);
+    const avoidList = existingQuestions.slice(0, 10).map(q => `"${q.q}"`).join(', ');
+    const prompt = `Tu es formateur en CAP Pâtisserie. Analyse cette fiche de cours et génère 10 NOUVELLES questions, différentes des précédentes, en variant obligatoirement les types.
+
+Types disponibles :
+- "mcq" : QCM classique, 4 options, 1 correcte
+- "tf" : Vrai ou Faux (a = ["Vrai","Faux"], correct = 0 ou 1)
+- "fill" : Compléter la phrase (la question contient ___, 4 options)
+
+Questions à ÉVITER (déjà posées) : ${avoidList}
+Graine : ${seed}
+
+Réponds UNIQUEMENT en JSON valide :
+{
+  "title": "titre de la fiche",
+  "questions": [
+    { "type": "mcq", "q": "Question ?", "a": ["A","B","C","D"], "correct": 0 },
+    { "type": "tf", "q": "Affirmation à juger.", "a": ["Vrai","Faux"], "correct": 1 },
+    { "type": "fill", "q": "La ___ consiste à...", "a": ["A","B","C","D"], "correct": 2 }
+  ]
+}
+Exactement 10 questions. Au moins 3 "tf" et 2 "fill", le reste en "mcq".`;
+    const text = await callAI(prompt, imageDataUrl);
+    return parseJSON(text);
+  },
+
   async generateQuestions(theme, avoidQuestions) {
     const seed = Math.random().toString(36).slice(2, 8);
     const themeMap = {
@@ -292,4 +319,3 @@ window.SEED_RECIPES = SEED_RECIPES;
 window.CATEGORIES = CATEGORIES;
 window.AI = AI;
 window.uid = uid;
-window.GEMINI_API_KEY = GEMINI_API_KEY;
