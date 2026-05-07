@@ -129,7 +129,7 @@ const CATEGORIES = ['Tout', 'Desserts', 'Viennoiserie', 'Entremets', 'Crèmes', 
 /* ---------------- AI ----------------
    Clé Groq gratuite sur https://console.groq.com
    14 400 requêtes/jour gratuites */
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = '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';
 const GROQ_MODEL_TEXT  = 'llama-3.3-70b-versatile';
 const GROQ_MODEL_VISION = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
